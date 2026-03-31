@@ -6,7 +6,7 @@ cd ~/projekty/gorzow
 export PUB_CACHE="$HOME/projekty/gorzow/.pub-cache"
 mkdir -p "$PUB_CACHE"
 
-echo 'System OBERON: Universal Build Script v4.0 🐾🏗️📡'
+echo 'System OBERON: Universal Build Script v4.1 (Tile Edition) 🐾🏗️📡'
 
 # 1. Załaduj Skarbiec .env
 if [ -f .env ]; then
@@ -16,8 +16,8 @@ else
     exit 1
 fi
 
-# 2. Pobieranie wersji z manifest.json
-OLD_VER=$(grep -oP '(?<="ota_version": )[0-9.]+' wersje/manifest.json)
+# 2. Pobieranie wersji z dane/system.json
+OLD_VER=$(grep -oP '(?<="ota_version": )[0-9.]+' dane/system.json)
 NEW_VER=$(echo "scale=1; $OLD_VER + 0.1" | bc)
 if [[ $NEW_VER == .* ]]; then NEW_VER="0$NEW_VER"; fi
 
@@ -32,7 +32,7 @@ echo "Pobieram części do Lokalnego Skarbca... 🐾📦"
 $FLUTTER_BIN pub get
 
 sed -i "s/version: .*/version: 0.0.$BUILD_NUM+$BUILD_NUM/g" pubspec.yaml
-sed -i "s/\"ota_version\": .*/\"ota_version\": $NEW_VER/g" wersje/manifest.json
+sed -i "s/\"ota_version\": .*/\"ota_version\": $NEW_VER/g" dane/system.json
 sed -i "s/_currentAppVersion = .*/_currentAppVersion = $NEW_VER; \/\/ v$NEW_VER/g" lib/main.dart
 
 # 4. Budowanie APK UNIWERSALNEGO (Pancerne) 🏗️
