@@ -172,15 +172,20 @@ class _TileDashboardState extends State<TileDashboard> {
   Widget _buildTileContent(dynamic t) {
     if (t['id'] == 'weather' && _weather != null) {
       return Padding(
-        padding: const EdgeInsets.all(15),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.wb_sunny_rounded, color: Colors.white, size: 40),
-            const SizedBox(height: 10),
-            Text('${_weather!['temperature']}°C', style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900)),
-            const Text('Gorzów', style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold)),
-          ],
+        padding: const EdgeInsets.all(8),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.wb_sunny_rounded, color: Colors.white, size: 40),
+              const SizedBox(height: 4),
+              Text('${_weather!['temperature']}°C', 
+                style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900)),
+              const Text('Gorzów', 
+                style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold)),
+            ],
+          ),
         ),
       );
     }
@@ -188,19 +193,30 @@ class _TileDashboardState extends State<TileDashboard> {
     return Stack(
       children: [
         Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(_getIcon(t['icon']), color: Colors.white, size: 30),
-              if (t['size'] != '1x1') const SizedBox(height: 8),
-              if (t['size'] != '1x1') Text(t['title'] ?? '', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-            ],
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(_getIcon(t['icon']), color: Colors.white, size: 30),
+                  if (t['size'] != '1x1') const SizedBox(height: 8),
+                  if (t['size'] != '1x1') 
+                    Text(t['title'] ?? '', 
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ),
           ),
         ),
         if (t['size'] == '1x1')
           Positioned(
-            bottom: 5, right: 5,
-            child: Text(t['title'] ?? '', style: const TextStyle(color: Colors.white70, fontSize: 8, fontWeight: FontWeight.bold)),
+            bottom: 4, left: 0, right: 0,
+            child: Text(t['title'] ?? '', 
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white70, fontSize: 8, fontWeight: FontWeight.bold)),
           ),
       ],
     );
