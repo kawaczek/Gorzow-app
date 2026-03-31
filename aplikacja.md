@@ -1,61 +1,54 @@
-# 🐾 Biblia Bastionu: Projekt GORZOW v2.2 (Tile Edition)
+# 🐾 BIBLIA BASTIONU GORZOW v2.2 (System OBERON) 🛡️
 
-To jest dokument operacyjny dla Agenta Gemini CLI. Zawiera kompletną wiedzę o architekturze, komunikacji i logice systemu. **Czytaj i stosuj bezwzględnie.**
+Ten dokument jest przeznaczony dla Agenta Gemini CLI zarządzającego projektem. Zawiera kompletną mapę drogową, protokoły komunikacyjne i logikę silnika.
 
-## 1. Architektura Systemu (Model "Bastion") 🏗️
-System składa się z czterech filarów:
-1.  **Termux (Centrum Dowodzenia)**: Główne miejsce edycji kodu i zarządzania backupem.
-2.  **Minionek (Fabryka APK)**: Laptop Asus (alias `minionek`). Posiada czysty Flutter SDK w `~/sdk/flutter` oraz Emulator Androida. Służy wyłącznie do budowania i testowania APK.
-3.  **Serwer FTP (`gorzow.kawak.pl`)**: Produkcja. Serwuje dane (JSON), silnik map (PHP) i pliki instalacyjne (APK).
-4.  **GitHub (Pancerny Sejf)**: Repozytorium `kawaczek/Gorzow-app`. Każda zmiana **MUSI** tam trafić przed buildem.
+## 1. STRUKTURA IMPERIUM (ŚRODOWISKO) 🏗️
+- **TERMUX (MASTER)**: Główny węzeł. Tu edytujemy kod (`~/projekty/gorzow`). Zarządza backupem (Git) i steruje Minionkiem (SSH).
+- **MINIONEK (WORKER)**: Laptop Asus (`ssh minionek`). Fabryka APK.
+    - **Flutter SDK**: `~/sdk/flutter/bin/flutter`.
+    - **Android SDK**: `~/sdk/android`.
+    - **Emulator**: `Gorzow_Emulator` (Android 34, x86_64).
+    - **Protokół SSH**: Sesje są nieinteraktywne - ZAWSZE używaj pełnych ścieżek do binariów.
+- **SERWER FTP (PRODUKCJA)**: `gorzow.kawak.pl`. Hostuje dane i pliki APK.
+    - Dane logowania: Skarbiec `.env` w Termuxie.
+- **GITHUB (BACKUP)**: `kawaczek/Gorzow-app`. Żelazna zasada: commit po każdej zmianie.
 
-## 2. Struktura Projektu 📂
-- `lib/main.dart`: Serce aplikacji. Zawiera **TileEngine** (silnik kafelkowy Windows Phone Style).
-- `dane/`: Konfiguracja dynamiczna (wysyłana na serwer).
-    - `system.json`: Nazwa aplikacji, kolory, wersja OTA, powiadomienia.
-    - `tiles.json`: Definicja kafelków (układ, rozmiary, ikony, akcje).
-- `wersje/`: Katalog na serwerze i lokalnie na pliki APK i dane specyficzne dla map (np. `poi.json`).
-- `assets/`: Zasoby graficzne (ikona SVG).
-- `o-build.sh`: Skrypt automatyzujący budowę Universal APK i desant na FTP.
-- `index.php`: Inteligentna strona pobierania (Dark Mode, auto-wykrywanie wersji).
-- `map.php`: Silnik mapy oparty na Leaflet JS (ładowany przez WebView w aplikacji).
+## 2. MAPA PLIKÓW (LOGIKA) 📂
+- `lib/main.dart`: Silnik kafelkowy. Główne klasy:
+    - `TileDashboard`: Zarządza siatką, trybem edycji i cachem.
+    - `_buildTile`: Renderuje kafelki na podstawie rozmiarów (1x1, 2x2, 4x2).
+    - `_fetchData`: Pobiera JSONy z serwera i zapisuje w `SharedPreferences`.
+- `dane/system.json`: Globalna konfiguracja (kolory, nazwa, wersja OTA).
+- `dane/tiles.json`: Definicja kafelków. Typy: `live` (pogoda), `web` (linki), `map` (POI), `app_link` (zewnętrzne apki).
+- `o-build.sh`: Skrypt-orkiestrator na Minionku.
+    - Funkcja: Podbija wersję w `system.json`, buduje Universal APK, robi desant na FTP.
+- `index.php`: Strona główna. Skrypt PHP automatycznie wykrywa najnowsze APK w folderze `wersje/` na podstawie daty modyfikacji i manifestu.
+- `map.php`: Silnik mapy (Leaflet JS). Aplikacja ładuje go w WebView, przekazując parametry `lat`, `lng` i `data`.
 
-## 3. Komunikacja i Rozkazy 📡
-### SSH (Minionek)
-- Połączenie: `ssh minionek`.
-- Ścieżka projektu: `~/projekty/gorzow`.
-- **UWAGA**: W sesjach nieinteraktywnych używaj pełnych ścieżek: `~/sdk/flutter/bin/flutter`.
-### FTP (Produkcja)
-- Host: `ftp.dm72001.domenomania.eu` (zmienne w `.env`).
-- Katalog główny: `/`. Pliki danych: `/dane/`. APK: `/wersje/`.
-### GitHub (Backup)
-- Repo: `https://github.com/kawaczek/Gorzow-app.git`.
-- Zasada: `git add . && git commit -m "..." && git push`.
+## 3. PROTOKOŁY OPERACYJNE (ROZKAZY) 📡
+### Budowa nowej wersji:
+1.  **Backup**: `cd ~/projekty/gorzow && git add . && git commit -m "..." && git push`
+2.  **Synchronizacja**: `scp -r lib assets dane android .env pubspec.yaml o-build.sh index.php map.php minionek:~/projekty/gorzow/`
+3.  **Kompilacja**: `ssh minionek "cd ~/projekty/gorzow && ./o-build.sh"`
+4.  **Weryfikacja (Emulator)**: 
+    - Odpalenie: `ssh minionek "~/sdk/android/emulator/emulator -avd Gorzow_Emulator -no-window &"`
+    - Instalacja i bieg: `ssh minionek "cd ~/projekty/gorzow && ~/sdk/flutter/bin/flutter run --release -d emulator-5554"`
 
-## 4. Logika Aplikacji (Tile Engine) 📱
-- **Zasilanie**: Dane pobierane przy starcie z `dane/system.json` i `dane/tiles.json`.
-- **Cache**: Wykorzystuje `shared_preferences`. Jeśli serwer nie odpowiada, ładuje ostatnie znane kafelki.
-- **Interakcja**: 
-    - Krótkie kliknięcie: Otwiera moduł (WebView, Mapa, AppLink).
-    - Przycisk Edytuj (AppBar): Włącza tryb `ReorderableGridView` - pozwala na przesuwanie kafelków (Drag & Drop).
-- **Rozmiary kafelków**: `1x1` (mały), `2x2` (średni/kwadrat), `4x2` (szeroki).
-- **Moduły**:
-    - `web`: Otwiera URL w WebView.
-    - `map`: Otwiera `map.php?data=...` z przekazaniem lokalizacji GPS.
-    - `app_link`: Otwiera zewnętrzną aplikację przez Package Name (App Bridge).
+### Ratowanie systemu (Fixes):
+- **Problem z Gradle**: `ssh minionek "cd ~/projekty/gorzow/android && ./gradlew clean"`
+- **Brak paczek**: `ssh minionek "cd ~/projekty/gorzow && ~/sdk/flutter/bin/flutter pub get"`
+- **Regeneracja Androida**: `ssh minionek "cd ~/projekty/gorzow && rm -rf android && ~/sdk/flutter/bin/flutter create . --platforms android"`
 
-## 5. Procedura Budowy i Desantu (KRYTYCZNA) 🚀
-Zawsze wykonuj te kroki w podanej kolejności:
-1.  **Backup**: `git push` do chmury.
-2.  **Desant Kodu**: `scp -r lib assets dane android .env pubspec.yaml o-build.sh index.php map.php minionek:~/projekty/gorzow/`.
-3.  **Build na Minionku**: `ssh minionek "cd ~/projekty/gorzow && ./o-build.sh"`.
-    - Skrypt `o-build.sh` sam podbija wersję, buduje Universal APK i wysyła wszystko na FTP.
-4.  **Test Emulatora**: `ssh minionek "~/sdk/flutter/bin/flutter run --release -d emulator-5554"`.
+## 4. FILOZOFIA "PANCERNEJ BRAMY" 🛡️
+- **Minimalizm Fluttera**: Unikaj natywnych bibliotek mapowych i skomplikowanych pluginów. Korzystaj z WebView + PHP/JS na serwerze (większa elastyczność, brak błędów kompilacji).
+- **Universal Build**: Nigdy nie buduj tylko na `arm64-v8a`. Zawsze `flutter build apk` bez flag platformy, aby APK działało na każdym telefonie Szefa.
+- **Dynamiczność**: Jak najwięcej logiki (układ kafelków, linki, powiadomienia) trzymaj w JSON na serwerze. Cel: aktualizacja aplikacji bez wysyłania nowego APK.
 
-## 6. Rozwiązywanie Problemów 🛠️
-- **Błąd "Android Embedding"**: Jeśli Minionek narzeka, usuń folder `android/` i wywołaj `flutter create . --platforms android`.
-- **Błąd "Package not found"**: Użyj lokalnego `PUB_CACHE` (wpisane w `o-build.sh`).
-- **Błąd Instalacji APK**: Zawsze buduj wersję **Universal** (bez flagi `--target-platform`), aby pasowała do wszystkich procesorów.
+## 5. ZASADY BEZWZGLĘDNE 🐾
+1.  Nigdy nie modyfikuj `lib/main.dart` bez wcześniejszego backupu oryginału.
+2.  Zawsze sprawdzaj `flutter doctor` na Minionku przy błędach buildu.
+3.  `.env` jest święty i tajny - nigdy nie trafia na GitHub.
 
 ---
-*Dokument zatwierdzony przez OBERONA v2.2. Nie zmieniać bez rozkazu Szefa.* 🐾🛡️
+*Alfred (Logistyka) & Oberon (Duch Systemu) 🐾✨*
+*Data spisania: 2026-03-31 (v2.2)*
