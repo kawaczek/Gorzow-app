@@ -11,16 +11,17 @@ if (!checkAuth()) {
     <title>Bastion Gorzów - Logowanie</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
     <style>
-        body { display: flex; align-items: center; justify-content: center; height: 100vh; background-color: #111; color: #eee; }
-        .login-card { max-width: 400px; width: 100%; padding: 2rem; border-radius: 8px; background-color: #222; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
-        .error { color: #ff5252; margin-bottom: 1rem; text-align: center; }
-        button { background-color: #008C45 !important; border-color: #008C45 !important; }
+        body { display: flex; align-items: center; justify-content: center; height: 100vh; background-color: #f8f9fa; color: #333; }
+        .login-card { max-width: 400px; width: 100%; padding: 2.5rem; border-radius: 16px; background-color: #fff; box-shadow: 0 10px 30px rgba(0,0,0,0.05); border: 1px solid #eee; }
+        .error { color: #ff4757; margin-bottom: 1rem; text-align: center; font-weight: 600; }
+        button { background-color: #008C45 !important; border-color: #008C45 !important; border-radius: 8px; }
+        input { border-radius: 8px !important; }
     </style>
 </head>
 <body>
     <div class="login-card">
-        <h2 style="text-align: center; color: #008C45;">🐾 System OBERON</h2>
-        <p style="text-align: center; margin-bottom: 2rem;">Wymagana autoryzacja do Bastionu Gorzów.</p>
+        <h2 style="text-align: center; color: #008C45; font-weight: 800;">🐾 OBERON System</h2>
+        <p style="text-align: center; margin-bottom: 2rem; color: #666;">Wymagana autoryzacja do Bastionu Gorzów.</p>
         <?php if (!empty($login_error)) echo '<div class="error">' . htmlspecialchars($login_error) . '</div>'; ?>
         <form method="POST">
             <input type="hidden" name="action" value="login">

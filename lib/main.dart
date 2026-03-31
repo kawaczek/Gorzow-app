@@ -119,21 +119,22 @@ class _TileDashboardState extends State<TileDashboard> {
     }
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
-        backgroundColor: Colors.black,
-        elevation: 0,
-        title: Text(_system?['app_name'] ?? 'Gorzow', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 28)),
+        backgroundColor: Colors.white,
+        elevation: 0.5,
+        title: Text(_system?['app_name'] ?? 'Gorzów', style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold, fontSize: 24)),
+        centerTitle: true,
         actions: [
-          IconButton(icon: Icon(_isEditMode ? Icons.check_circle : Icons.edit, color: Colors.white70), onPressed: () => setState(() => _isEditMode = !_isEditMode)),
-          IconButton(icon: const Icon(Icons.refresh, color: Colors.white70), onPressed: _fetchData),
+          IconButton(icon: Icon(_isEditMode ? Icons.check_circle : Icons.edit, color: primaryColor.withOpacity(0.7)), onPressed: () => setState(() => _isEditMode = !_isEditMode)),
+          IconButton(icon: Icon(Icons.refresh, color: primaryColor.withOpacity(0.7)), onPressed: _fetchData),
         ],
       ),
       body: ReorderableGridView.count(
         crossAxisCount: 4,
         mainAxisSpacing: 12,
         crossAxisSpacing: 12,
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(16),
         onReorder: (oldIndex, newIndex) {
           setState(() {
             final item = _tiles.removeAt(oldIndex);
@@ -146,12 +147,6 @@ class _TileDashboardState extends State<TileDashboard> {
   }
 
   Widget _buildTile(dynamic t, Color primaryColor) {
-    final size = t['size'] ?? '1x1';
-    int crossSpan = 1;
-    int mainSpan = 1;
-    if (size == '2x2') { crossSpan = 2; mainSpan = 2; }
-    if (size == '4x2') { crossSpan = 4; mainSpan = 2; }
-
     return ReorderableDelayedDragStartListener(
       key: ValueKey(t['id']),
       index: _tiles.indexOf(t),
@@ -160,30 +155,34 @@ class _TileDashboardState extends State<TileDashboard> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 300),
           decoration: BoxDecoration(
-            color: _isEditMode ? Colors.white10 : primaryColor,
-            borderRadius: BorderRadius.circular(t['id'] == 'weather' ? 30 : 4),
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(t['id'] == 'weather' ? 24 : 16),
+            boxShadow: [
+              BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 4)),
+            ],
+            border: Border.all(color: primaryColor.withOpacity(0.1), width: 1),
           ),
-          child: _buildTileContent(t),
+          child: _buildTileContent(t, primaryColor),
         ),
       ),
     );
   }
 
-  Widget _buildTileContent(dynamic t) {
+  Widget _buildTileContent(dynamic t, Color primaryColor) {
     if (t['id'] == 'weather' && _weather != null) {
       return Padding(
-        padding: const EdgeInsets.all(8),
+        padding: const EdgeInsets.all(12),
         child: FittedBox(
           fit: BoxFit.scaleDown,
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.wb_sunny_rounded, color: Colors.white, size: 40),
+              Icon(Icons.wb_cloudy_rounded, color: Colors.blueAccent, size: 40),
               const SizedBox(height: 4),
               Text('${_weather!['temperature']}°C', 
-                style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900)),
-              const Text('Gorzów', 
-                style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold)),
+                style: const TextStyle(color: Color(0xFF333333), fontSize: 26, fontWeight: FontWeight.w900)),
+              const Text('Gorzów Wlkp.', 
+                style: TextStyle(color: Colors.black54, fontSize: 12, fontWeight: FontWeight.bold)),
             ],
           ),
         ),
@@ -194,18 +193,18 @@ class _TileDashboardState extends State<TileDashboard> {
       children: [
         Center(
           child: Padding(
-            padding: const EdgeInsets.all(8.0),
+            padding: const EdgeInsets.all(10.0),
             child: FittedBox(
               fit: BoxFit.scaleDown,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(_getIcon(t['icon']), color: Colors.white, size: 30),
+                  Icon(_getIcon(t['icon']), color: primaryColor, size: 32),
                   if (t['size'] != '1x1') const SizedBox(height: 8),
                   if (t['size'] != '1x1') 
                     Text(t['title'] ?? '', 
                       textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      style: const TextStyle(color: Color(0xFF333333), fontWeight: FontWeight.bold, fontSize: 14)),
                 ],
               ),
             ),
@@ -213,10 +212,10 @@ class _TileDashboardState extends State<TileDashboard> {
         ),
         if (t['size'] == '1x1')
           Positioned(
-            bottom: 4, left: 0, right: 0,
+            bottom: 6, left: 0, right: 0,
             child: Text(t['title'] ?? '', 
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.white70, fontSize: 8, fontWeight: FontWeight.bold)),
+              style: const TextStyle(color: Colors.black45, fontSize: 9, fontWeight: FontWeight.bold)),
           ),
       ],
     );
