@@ -1,0 +1,26 @@
+# OBERON: Pancerny gitignore dla projektu Gorzow 🐾🛡️
+# Build artifacts
+build/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+
+# Android specific
+android/app/build/
+android/.gradle/
+local.properties
+*.keystore
+*.jks
+
+# Binaries (Kluczowe: Żadnych APK!)
+*.apk
+*.exe
+*.so
+
+# Secrets
+.env
+
+# Web
+node_modules/
+.cache/

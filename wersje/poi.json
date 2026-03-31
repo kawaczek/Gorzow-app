@@ -1,0 +1,20 @@
+[
+  {
+    "name": "Katedra Gorzowska",
+    "lat": 52.7308,
+    "lng": 15.2392,
+    "desc": "Zabytkowa katedra w centrum miasta."
+  },
+  {
+    "name": "Bulwar Nadwarciański",
+    "lat": 52.7285,
+    "lng": 15.2415,
+    "desc": "Idealne miejsce na spacer nad Wartą."
+  },
+  {
+    "name": "Park Róż",
+    "lat": 52.7365,
+    "lng": 15.2355,
+    "desc": "Piękny ogród dendrologiczny."
+  }
+]

@@ -1,0 +1,38 @@
+{
+  "app_config": {
+    "name": "Gorzow",
+    "ota_version": 1.0,
+    "primary_color": "#008C45",
+    "notification": "Witaj w nowym Bastionie Gorzow v1.0! 🐾🏙️",
+    "update_url": "https://gorzow.kawak.pl/"
+  },
+  "modules": [
+    {
+      "id": "gorzowianin",
+      "name": "Gorzowianin",
+      "icon": "newspaper",
+      "type": "web",
+      "url": "https://gorzowianin.com",
+      "active": true,
+      "description": "Najnowsze wieści z miasta."
+    },
+    {
+      "id": "mzk",
+      "name": "Rozkład Jazdy MZK",
+      "icon": "directions_bus",
+      "type": "web",
+      "url": "https://rozkłady.mzk-gorzow.com.pl/",
+      "active": true,
+      "description": "Tramwaje i autobusy."
+    },
+    {
+      "id": "poi_map",
+      "name": "Mapa POI",
+      "icon": "map",
+      "type": "map",
+      "data_url": "wersje/poi.json",
+      "active": true,
+      "description": "Ważne miejsca w Gorzowie."
+    }
+  ]
+}
