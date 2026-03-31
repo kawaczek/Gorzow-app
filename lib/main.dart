@@ -42,6 +42,7 @@ class TileDashboard extends StatefulWidget {
 
 class _TileDashboardState extends State<TileDashboard> {
   final String _baseUrl = 'https://gorzow.kawak.pl';
+  double _currentAppVersion = 2.0; // v2.0
   Map<String, dynamic>? _system;
   List<dynamic> _tiles = [];
   bool _loading = true;
@@ -60,27 +61,34 @@ class _TileDashboardState extends State<TileDashboard> {
   }
 
   Future<void> _loadCache() async {
-    final prefs = await SharedPreferences.getInstance();
-    final cachedSystem = prefs.getString('cache_system');
-    final cachedTiles = prefs.getString('cache_tiles');
-    if (cachedSystem != null) setState(() => _system = jsonDecode(cachedSystem));
-    if (cachedTiles != null) setState(() => _tiles = jsonDecode(cachedTiles));
-    if (_system != null || _tiles.isNotEmpty) setState(() => _loading = false);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cachedSystem = prefs.getString('cache_system');
+      final cachedTiles = prefs.getString('cache_tiles');
+      if (cachedSystem != null) setState(() => _system = jsonDecode(cachedSystem));
+      if (cachedTiles != null) setState(() => _tiles = jsonDecode(cachedTiles));
+      if (_system != null || _tiles.isNotEmpty) setState(() => _loading = false);
+    } catch (e) { debugPrint('Cache Error: $e'); }
   }
 
   Future<void> _fetchData() async {
     try {
-      final resSys = await http.get(Uri.parse('$_baseUrl/dane/system.json'));
-      final resTiles = await http.get(Uri.parse('$_baseUrl/dane/tiles.json'));
+      final resSys = await http.get(Uri.parse('$_baseUrl/dane/system.json')).timeout(const Duration(seconds: 5));
+      final resTiles = await http.get(Uri.parse('$_baseUrl/dane/tiles.json')).timeout(const Duration(seconds: 5));
       if (resSys.statusCode == 200 && resTiles.statusCode == 200) {
         final sys = jsonDecode(resSys.body);
-        final tiles = jsonDecode(resTiles.body)['tiles'];
+        final tiles = jsonDecode(resTiles.body)['tiles'] as List;
         final prefs = await SharedPreferences.getInstance();
         prefs.setString('cache_system', jsonEncode(sys));
         prefs.setString('cache_tiles', jsonEncode(tiles));
         setState(() { _system = sys; _tiles = tiles; _loading = false; });
+      } else {
+        setState(() => _loading = false);
       }
-    } catch (e) { debugPrint('Fetch Error: $e'); setState(() => _loading = false); }
+    } catch (e) { 
+      debugPrint('Fetch Error: $e'); 
+      setState(() => _loading = false); 
+    }
   }
 
   Future<void> _fetchWeather() async {
@@ -100,8 +108,15 @@ class _TileDashboardState extends State<TileDashboard> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    final primaryColor = Color(int.parse((_system?['primary_color'] ?? '#008C45').replaceAll('#', '0xFF')));
+    if (_loading) return const Scaffold(body: Center(child: CircularProgressIndicator(color: Color(0xFF008C45))));
+
+    Color primaryColor;
+    try {
+      String colorStr = (_system?['primary_color'] ?? '#008C45').replaceAll('#', '0xFF');
+      primaryColor = Color(int.parse(colorStr));
+    } catch (e) {
+      primaryColor = const Color(0xFF008C45);
+    }
 
     return Scaffold(
       backgroundColor: Colors.black,

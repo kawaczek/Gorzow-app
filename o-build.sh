@@ -32,8 +32,8 @@ echo "Pobieram części do Lokalnego Skarbca... 🐾📦"
 $FLUTTER_BIN pub get
 
 sed -i "s/version: .*/version: 0.0.$BUILD_NUM+$BUILD_NUM/g" pubspec.yaml
-sed -i "s/\"ota_version\": .*/\"ota_version\": $NEW_VER/g" dane/system.json
-sed -i "s/_currentAppVersion = .*/_currentAppVersion = $NEW_VER; \/\/ v$NEW_VER/g" lib/main.dart
+sed -i "s/\"ota_version\": [0-9.]*/\"ota_version\": $NEW_VER/g" dane/system.json
+sed -i "s/_currentAppVersion = [0-9.]*/_currentAppVersion = $NEW_VER/g" lib/main.dart
 
 # 4. Budowanie APK UNIWERSALNEGO (Pancerne) 🏗️
 echo 'Buduję duszę UNIWERSALNĄ (armv7, arm64, x86_64)... 🐾🏗️'
