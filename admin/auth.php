@@ -1,16 +1,8 @@
 <?php
 session_start();
 
-function getEnvVar($key) {
-    $envPath = __DIR__ . '/../.env';
-    if (!file_exists($envPath)) return null;
-    $lines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-    foreach ($lines as $line) {
-        if (strpos(trim($line), '#') === 0) continue;
-        list($k, $v) = explode('=', $line, 2);
-        if (trim($k) === $key) return trim($v);
-    }
-    return null;
+function getAdminPassword() {
+    return 'Kawak123#'; // Hasło Pancernej Bramy
 }
 
 function checkAuth() {
@@ -23,8 +15,8 @@ function checkAuth() {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     if ($_POST['action'] === 'login') {
         $pass = $_POST['password'] ?? '';
-        $adminPass = getEnvVar('ADMIN_PASSWORD');
-        
+        $adminPass = getAdminPassword();
+
         if ($pass === $adminPass) {
             $_SESSION['logged_in'] = true;
             header('Location: index.php');
@@ -32,7 +24,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         } else {
             $login_error = "Błędne hasło, Szefie! 🐾";
         }
-    } elseif ($_POST['action'] === 'logout') {
+    }
+ elseif ($_POST['action'] === 'logout') {
         session_destroy();
         header('Location: index.php');
         exit;
