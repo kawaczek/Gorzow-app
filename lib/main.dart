@@ -7,7 +7,8 @@ import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:external_app_launcher/external_app_launcher.dart';
-import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:reorderable_grid_view/reorderable_grid_view.dart';
 
 class MyHttpOverrides extends HttpOverrides {
   @override
@@ -20,64 +21,67 @@ void main() {
   runApp(const GorzowApp());
 }
 
-class GorzowApp extends StatefulWidget {
+class GorzowApp extends StatelessWidget {
   const GorzowApp({super.key});
   @override
-  State<GorzowApp> createState() => _GorzowAppState();
-}
-
-class _GorzowAppState extends State<GorzowApp> {
-  Map<String, dynamic>? _manifest;
-  bool _loading = true;
-
-  @override
-  void initState() { super.initState(); _fetchManifest(); }
-
-  Future<void> _fetchManifest() async {
-    setState(() => _loading = true);
-    try {
-      final res = await http.get(Uri.parse('https://gorzow.kawak.pl/wersje/manifest.json')).timeout(const Duration(seconds: 10));
-      if (res.statusCode == 200) {
-        setState(() { _manifest = jsonDecode(res.body); _loading = false; });
-      } else { _showError(); }
-    } catch (e) { _showError(); }
-  }
-
-  void _showError() => setState(() => _loading = false);
-
-  @override
   Widget build(BuildContext context) {
-    if (_loading) return const MaterialApp(home: Scaffold(body: Center(child: CircularProgressIndicator())));
-    
-    final config = _manifest?['app_config'];
-    final primaryColor = Color(int.parse((config?['primary_color'] ?? '#008C45').replaceAll('#', '0xFF')));
-
     return MaterialApp(
-      title: config?['name'] ?? 'Gorzow',
+      title: 'Gorzow',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(useMaterial3: true, colorSchemeSeed: primaryColor, textTheme: GoogleFonts.ubuntuTextTheme()),
-      home: MainDashboard(manifest: _manifest, onRefresh: _fetchManifest),
+      theme: ThemeData(useMaterial3: true, textTheme: GoogleFonts.ubuntuTextTheme()),
+      home: const TileDashboard(),
     );
   }
 }
 
-class MainDashboard extends StatefulWidget {
-  final Map<String, dynamic>? manifest;
-  final VoidCallback onRefresh;
-  const MainDashboard({super.key, this.manifest, required this.onRefresh});
+class TileDashboard extends StatefulWidget {
+  const TileDashboard({super.key});
   @override
-  State<MainDashboard> createState() => _MainDashboardState();
+  State<TileDashboard> createState() => _TileDashboardState();
 }
 
-class _MainDashboardState extends State<MainDashboard> {
-  final double _currentAppVersion = 1.0;
+class _TileDashboardState extends State<TileDashboard> {
   final String _baseUrl = 'https://gorzow.kawak.pl';
+  Map<String, dynamic>? _system;
+  List<dynamic> _tiles = [];
+  bool _loading = true;
+  bool _isEditMode = false;
   Position? _currentPos;
   Map<String, dynamic>? _weather;
 
   @override
   void initState() { super.initState(); _boot(); }
-  Future<void> _boot() async { _fetchWeather(); _currentPos = await _determinePosition(); _checkUpdate(); }
+
+  Future<void> _boot() async {
+    await _loadCache();
+    await _fetchData();
+    _fetchWeather();
+    _currentPos = await _determinePosition();
+  }
+
+  Future<void> _loadCache() async {
+    final prefs = await SharedPreferences.getInstance();
+    final cachedSystem = prefs.getString('cache_system');
+    final cachedTiles = prefs.getString('cache_tiles');
+    if (cachedSystem != null) setState(() => _system = jsonDecode(cachedSystem));
+    if (cachedTiles != null) setState(() => _tiles = jsonDecode(cachedTiles));
+    if (_system != null || _tiles.isNotEmpty) setState(() => _loading = false);
+  }
+
+  Future<void> _fetchData() async {
+    try {
+      final resSys = await http.get(Uri.parse('$_baseUrl/dane/system.json'));
+      final resTiles = await http.get(Uri.parse('$_baseUrl/dane/tiles.json'));
+      if (resSys.statusCode == 200 && resTiles.statusCode == 200) {
+        final sys = jsonDecode(resSys.body);
+        final tiles = jsonDecode(resTiles.body)['tiles'];
+        final prefs = await SharedPreferences.getInstance();
+        prefs.setString('cache_system', jsonEncode(sys));
+        prefs.setString('cache_tiles', jsonEncode(tiles));
+        setState(() { _system = sys; _tiles = tiles; _loading = false; });
+      }
+    } catch (e) { debugPrint('Fetch Error: $e'); setState(() => _loading = false); }
+  }
 
   Future<void> _fetchWeather() async {
     try {
@@ -94,136 +98,109 @@ class _MainDashboardState extends State<MainDashboard> {
     } catch (e) { return null; }
   }
 
-  void _checkUpdate() {
-    if (widget.manifest == null) return;
-    final serverVer = double.tryParse(widget.manifest!['app_config']['ota_version'].toString()) ?? 0.0;
-    if (serverVer > _currentAppVersion) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Dostępna nowa wersja v$serverVer! 🐾🚀'),
-        action: SnackBarAction(label: 'POBIERZ', onPressed: () => launchUrl(Uri.parse(_baseUrl), mode: LaunchMode.externalApplication)),
-        duration: const Duration(seconds: 15),
-        backgroundColor: Colors.blue[800],
-      ));
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final config = widget.manifest?['app_config'];
-    final modules = (widget.manifest?['modules'] as List? ?? []).where((m) => m['active'] == true).toList();
-    final primaryColor = Theme.of(context).primaryColor;
+    if (_loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    final primaryColor = Color(int.parse((_system?['primary_color'] ?? '#008C45').replaceAll('#', '0xFF')));
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: Colors.black,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.black,
         elevation: 0,
-        title: Text(config?['name'] ?? 'Gorzow', style: TextStyle(color: primaryColor, fontWeight: FontWeight.w900, fontSize: 24)),
-        centerTitle: true,
-        actions: [IconButton(icon: Icon(Icons.refresh, color: primaryColor), onPressed: widget.onRefresh)],
+        title: Text(_system?['app_name'] ?? 'Gorzow', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 28)),
+        actions: [
+          IconButton(icon: Icon(_isEditMode ? Icons.check_circle : Icons.edit, color: Colors.white70), onPressed: () => setState(() => _isEditMode = !_isEditMode)),
+          IconButton(icon: const Icon(Icons.refresh, color: Colors.white70), onPressed: _fetchData),
+        ],
       ),
-      body: RefreshIndicator(
-        onRefresh: () async { widget.onRefresh(); await _boot(); },
-        child: ListView(
-          padding: const EdgeInsets.all(20),
-          children: [
-            _buildWeatherCard(primaryColor),
-            if (config?['notification'] != null) _buildNotification(config!['notification'], primaryColor),
-            const SizedBox(height: 25),
-            const Text('Twoje Miasto 🏠', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
-            const SizedBox(height: 15),
-            GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: 2,
-              mainAxisSpacing: 15,
-              crossAxisSpacing: 15,
-              children: modules.map((m) => _buildModuleCard(m, primaryColor)).toList(),
-            ),
-            const SizedBox(height: 40),
-            Center(child: Text('System OBERON v$_currentAppVersion 🐾✨', style: const TextStyle(fontSize: 11, color: Colors.grey))),
-          ],
-        ),
+      body: ReorderableGridView.count(
+        crossAxisCount: 4,
+        mainAxisSpacing: 12,
+        crossAxisSpacing: 12,
+        padding: const EdgeInsets.all(12),
+        onReorder: (oldIndex, newIndex) {
+          setState(() {
+            final item = _tiles.removeAt(oldIndex);
+            _tiles.insert(newIndex, item);
+          });
+        },
+        children: _tiles.map((t) => _buildTile(t, primaryColor)).toList(),
       ),
     );
   }
 
-  Widget _buildWeatherCard(Color col) {
-    if (_weather == null) return const SizedBox.shrink();
-    return Container(
-      padding: const EdgeInsets.all(25),
-      margin: const EdgeInsets.only(bottom: 20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(colors: [col, col.withOpacity(0.8)], begin: Alignment.topLeft, end: Alignment.bottomRight),
-        borderRadius: BorderRadius.circular(35),
-        boxShadow: [BoxShadow(color: col.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10))],
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.wb_sunny_rounded, size: 60, color: Colors.white),
-          const SizedBox(width: 25),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Gorzów Wielkopolski', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold, fontSize: 12)),
-              Text('${_weather!['temperature']}°C', style: const TextStyle(color: Colors.white, fontSize: 42, fontWeight: FontWeight.w900)),
-            ],
+  Widget _buildTile(dynamic t, Color primaryColor) {
+    final size = t['size'] ?? '1x1';
+    int crossSpan = 1;
+    int mainSpan = 1;
+    if (size == '2x2') { crossSpan = 2; mainSpan = 2; }
+    if (size == '4x2') { crossSpan = 4; mainSpan = 2; }
+
+    return ReorderableDelayedDragStartListener(
+      key: ValueKey(t['id']),
+      index: _tiles.indexOf(t),
+      child: GestureDetector(
+        onTap: _isEditMode ? null : () => _handleTileTap(t),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          decoration: BoxDecoration(
+            color: _isEditMode ? Colors.white10 : primaryColor,
+            borderRadius: BorderRadius.circular(t['id'] == 'weather' ? 30 : 4),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNotification(String text, Color col) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      margin: const EdgeInsets.only(bottom: 20),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: col.withOpacity(0.2))),
-      child: Row(
-        children: [
-          Icon(Icons.notifications_active_rounded, color: col, size: 20),
-          const SizedBox(width: 15),
-          Expanded(child: Text(text, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF475569)))),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildModuleCard(dynamic m, Color col) {
-    return InkWell(
-      onTap: () => _handleModuleTap(m),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(30),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 15, offset: const Offset(0, 5))],
+          child: _buildTileContent(t),
         ),
+      ),
+    );
+  }
+
+  Widget _buildTileContent(dynamic t) {
+    if (t['id'] == 'weather' && _weather != null) {
+      return Padding(
+        padding: const EdgeInsets.all(15),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              padding: const EdgeInsets.all(15),
-              decoration: BoxDecoration(color: col.withOpacity(0.1), shape: BoxShape.circle),
-              child: Icon(_getIcon(m['icon']), color: col, size: 30),
-            ),
-            const SizedBox(height: 12),
-            Text(m['name'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF1E293B))),
+            const Icon(Icons.wb_sunny_rounded, color: Colors.white, size: 40),
+            const SizedBox(height: 10),
+            Text('${_weather!['temperature']}°C', style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900)),
+            const Text('Gorzów', style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold)),
           ],
         ),
-      ),
+      );
+    }
+
+    return Stack(
+      children: [
+        Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(_getIcon(t['icon']), color: Colors.white, size: 30),
+              if (t['size'] != '1x1') const SizedBox(height: 8),
+              if (t['size'] != '1x1') Text(t['title'] ?? '', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ],
+          ),
+        ),
+        if (t['size'] == '1x1')
+          Positioned(
+            bottom: 5, right: 5,
+            child: Text(t['title'] ?? '', style: const TextStyle(color: Colors.white70, fontSize: 8, fontWeight: FontWeight.bold)),
+          ),
+      ],
     );
   }
 
-  void _handleModuleTap(dynamic m) {
-    String url = m['url'] ?? '';
-    if (m['type'] == 'map') {
-      url = '$_baseUrl/map.php?data=${m['data_url']}&lat=${_currentPos?.latitude ?? 52.73}&lng=${_currentPos?.longitude ?? 15.23}';
+  void _handleTileTap(dynamic t) {
+    String url = t['url'] ?? '';
+    if (t['type'] == 'map') {
+      url = '$_baseUrl/map.php?data=${t['data_url']}&lat=${_currentPos?.latitude ?? 52.73}&lng=${_currentPos?.longitude ?? 15.23}';
     }
     
-    if (m['type'] == 'app_link') {
+    if (t['type'] == 'app_link') {
       LaunchApp.openApp(androidPackageName: url.replaceAll('app://', ''));
-    } else {
-      Navigator.push(context, MaterialPageRoute(builder: (c) => WebViewPage(url: url, title: m['name'])));
+    } else if (t['type'] == 'web' || t['type'] == 'map') {
+      Navigator.push(context, MaterialPageRoute(builder: (c) => WebViewPage(url: url, title: t['title'])));
     }
   }
 
@@ -266,7 +243,12 @@ class _WebViewPageState extends State<WebViewPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.title, style: const TextStyle(fontWeight: FontWeight.bold))),
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        iconTheme: const IconThemeData(color: Colors.white),
+        title: Text(widget.title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+      ),
       body: Stack(
         children: [
           WebViewWidget(controller: _controller),

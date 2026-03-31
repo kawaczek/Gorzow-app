@@ -49,9 +49,12 @@ cp build/app/outputs/flutter-apk/app-release.apk wersje/$NEW_APK_NAME
 echo "Rozpoczynam Desant FTP na $FTP_HOST... 🐾📡"
 curl --ftp-create-dirs -T "wersje/$NEW_APK_NAME" -u "$FTP_USER:$FTP_PASS" "ftp://$FTP_HOST/wersje/$NEW_APK_NAME"
 curl -T "map.php" -u "$FTP_USER:$FTP_PASS" "ftp://$FTP_HOST/map.php"
-for f in wersje/*.json; do
+curl -T "index.php" -u "$FTP_USER:$FTP_PASS" "ftp://$FTP_HOST/index.php"
+
+echo "Wysyłam dane systemowe... 🐾📦"
+for f in dane/*.json; do
     echo "Wysyłam $f... 🐾📦"
-    curl -T "$f" -u "$FTP_USER:$FTP_PASS" "ftp://$FTP_HOST/wersje/$(basename $f)"
+    curl --ftp-create-dirs -T "$f" -u "$FTP_USER:$FTP_PASS" "ftp://$FTP_HOST/dane/$(basename $f)"
 done
 
 echo "System OBERON: Misja v$NEW_VER zakończona sukcesem! 🐾🏆"

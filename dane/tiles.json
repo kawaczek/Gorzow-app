@@ -1,0 +1,9 @@
+{
+  "tiles": [
+    {"id": "weather", "type": "live", "kind": "weather", "size": "2x2", "title": "Pogoda"},
+    {"id": "news", "type": "web", "url": "https://gorzowianin.com", "size": "2x2", "title": "Aktualności", "icon": "newspaper"},
+    {"id": "mzk", "type": "web", "url": "https://rozkłady.mzk-gorzow.com.pl/", "size": "1x1", "title": "MZK", "icon": "directions_bus"},
+    {"id": "map", "type": "map", "data_url": "dane/poi.json", "size": "1x1", "title": "Mapa POI", "icon": "map"},
+    {"id": "kalendarz", "type": "web", "url": "https://kalendarz.gorzow.pl", "size": "1x1", "title": "Kalendarz", "icon": "calendar_month"}
+  ]
+}
