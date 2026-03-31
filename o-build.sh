@@ -51,6 +51,13 @@ curl --ftp-create-dirs -T "wersje/$NEW_APK_NAME" -u "$FTP_USER:$FTP_PASS" "ftp:/
 curl -T "map.php" -u "$FTP_USER:$FTP_PASS" "ftp://$FTP_HOST/map.php"
 curl -T "index.php" -u "$FTP_USER:$FTP_PASS" "ftp://$FTP_HOST/index.php"
 
+echo "Wysyłam Panel Administratora... 🐾🛡️"
+curl --ftp-create-dirs -T "admin/index.php" -u "$FTP_USER:$FTP_PASS" "ftp://$FTP_HOST/admin/index.php"
+curl -T "admin/auth.php" -u "$FTP_USER:$FTP_PASS" "ftp://$FTP_HOST/admin/auth.php"
+curl -T "admin/api.php" -u "$FTP_USER:$FTP_PASS" "ftp://$FTP_HOST/admin/api.php"
+curl -T "admin/assets/app.js" -u "$FTP_USER:$FTP_PASS" "ftp://$FTP_HOST/admin/assets/app.js"
+curl -T "admin/assets/style.css" -u "$FTP_USER:$FTP_PASS" "ftp://$FTP_HOST/admin/assets/style.css"
+
 echo "Wysyłam dane systemowe... 🐾📦"
 for f in dane/*.json; do
     echo "Wysyłam $f... 🐾📦"
