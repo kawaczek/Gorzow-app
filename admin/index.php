@@ -118,6 +118,7 @@ if (!checkAuth()) {
                         <label for="tile-type">Typ</label>
                         <select id="tile-type" required>
                             <option value="web">Web (Link)</option>
+                            <option value="folder">📂 Folder</option>
                             <option value="live">Live (Pogoda)</option>
                             <option value="map">Map (POI)</option>
                             <option value="app_link">App Link</option>
@@ -132,6 +133,9 @@ if (!checkAuth()) {
                         </select>
                     </div>
                 </div>
+
+                <label for="tile-parent-id">ID Rodzica (zostaw puste dla Dashboardu)</label>
+                <input type="text" id="tile-parent-id" placeholder="np. folder_miejski">
 
                 <label for="tile-title">Tytuł</label>
                 <input type="text" id="tile-title" required>

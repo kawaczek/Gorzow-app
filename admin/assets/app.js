@@ -134,7 +134,8 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('tile-id').value = tile.id;
         document.getElementById('tile-type').value = tile.type;
         document.getElementById('tile-size').value = tile.size;
-        document.getElementById('tile-title').value = tile.title;
+        document.getElementById('tile-parent-id').value = tile.parent_id || '';
+        document.getElementById('tile-title').value = tile.title || '';
         document.getElementById('tile-icon').value = tile.icon || '';
         document.getElementById('tile-url').value = tile.url || '';
         document.getElementById('tile-kind').value = tile.kind || '';
@@ -159,6 +160,7 @@ document.addEventListener('DOMContentLoaded', () => {
             title: document.getElementById('tile-title').value,
         };
         
+        if (document.getElementById('tile-parent-id').value) tile.parent_id = document.getElementById('tile-parent-id').value;
         if (document.getElementById('tile-icon').value) tile.icon = document.getElementById('tile-icon').value;
         
         if (type === 'web' || type === 'app_link') tile.url = document.getElementById('tile-url').value;

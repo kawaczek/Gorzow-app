@@ -108,7 +108,7 @@ class _TileDashboardState extends State<TileDashboard> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const Scaffold(body: Center(child: CircularProgressIndicator(color: Color(0xFF008C45))));
+    if (_loading) return Scaffold(backgroundColor: Colors.white, body: Center(child: CircularProgressIndicator(color: Color(int.parse((_system?['primary_color'] ?? '#008C45').replaceAll('#', '0xFF'))))));
 
     Color primaryColor;
     try {
@@ -118,110 +118,184 @@ class _TileDashboardState extends State<TileDashboard> {
       primaryColor = const Color(0xFF008C45);
     }
 
+    final quickActions = _tiles.where((t) => t['parent_id'] == null || t['parent_id'] == '').toList();
+    
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0.5,
-        title: Text(_system?['app_name'] ?? 'Gorzów', style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold, fontSize: 24)),
-        centerTitle: true,
-        actions: [
-          IconButton(icon: Icon(_isEditMode ? Icons.check_circle : Icons.edit, color: primaryColor.withOpacity(0.7)), onPressed: () => setState(() => _isEditMode = !_isEditMode)),
-          IconButton(icon: Icon(Icons.refresh, color: primaryColor.withOpacity(0.7)), onPressed: _fetchData),
-        ],
-      ),
-      body: ReorderableGridView.count(
-        crossAxisCount: 4,
-        mainAxisSpacing: 12,
-        crossAxisSpacing: 12,
-        padding: const EdgeInsets.all(16),
-        onReorder: (oldIndex, newIndex) {
-          setState(() {
-            final item = _tiles.removeAt(oldIndex);
-            _tiles.insert(newIndex, item);
-          });
-        },
-        children: _tiles.map((t) => _buildTile(t, primaryColor)).toList(),
-      ),
-    );
-  }
-
-  Widget _buildTile(dynamic t, Color primaryColor) {
-    return ReorderableDelayedDragStartListener(
-      key: ValueKey(t['id']),
-      index: _tiles.indexOf(t),
-      child: GestureDetector(
-        onTap: _isEditMode ? null : () => _handleTileTap(t),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(t['id'] == 'weather' ? 24 : 16),
-            boxShadow: [
-              BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 4)),
-            ],
-            border: Border.all(color: primaryColor.withOpacity(0.1), width: 1),
+      body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          _buildHeroBanner(primaryColor),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
+              child: Text('Szybkie Akcje ⚡', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+            ),
           ),
-          child: _buildTileContent(t, primaryColor),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTileContent(dynamic t, Color primaryColor) {
-    if (t['id'] == 'weather' && _weather != null) {
-      return Padding(
-        padding: const EdgeInsets.all(12),
-        child: FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.wb_cloudy_rounded, color: Colors.blueAccent, size: 40),
-              const SizedBox(height: 4),
-              Text('${_weather!['temperature']}°C', 
-                style: const TextStyle(color: Color(0xFF333333), fontSize: 26, fontWeight: FontWeight.w900)),
-              const Text('Gorzów Wlkp.', 
-                style: TextStyle(color: Colors.black54, fontSize: 12, fontWeight: FontWeight.bold)),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return Stack(
-      children: [
-        Center(
-          child: Padding(
-            padding: const EdgeInsets.all(10.0),
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(_getIcon(t['icon']), color: primaryColor, size: 32),
-                  if (t['size'] != '1x1') const SizedBox(height: 8),
-                  if (t['size'] != '1x1') 
-                    Text(t['title'] ?? '', 
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: Color(0xFF333333), fontWeight: FontWeight.bold, fontSize: 14)),
-                ],
+          SliverToBoxAdapter(
+            child: SizedBox(
+              height: 110,
+              child: ListView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                scrollDirection: Axis.horizontal,
+                itemCount: quickActions.length,
+                itemBuilder: (context, index) => _buildQuickAction(quickActions[index], primaryColor),
               ),
             ),
           ),
-        ),
-        if (t['size'] == '1x1')
-          Positioned(
-            bottom: 6, left: 0, right: 0,
-            child: Text(t['title'] ?? '', 
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.black45, fontSize: 9, fontWeight: FontWeight.bold)),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Text('Odkryj Miasto 🏙️', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+            ),
           ),
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            sliver: SliverGrid(
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                mainAxisSpacing: 12,
+                crossAxisSpacing: 12,
+                childAspectRatio: 1.1,
+              ),
+              delegate: SliverChildBuilderDelegate(
+                (context, index) => _buildModernCard(_tiles[index], primaryColor),
+                childCount: _tiles.length,
+              ),
+            ),
+          ),
+          const SliverToBoxAdapter(child: SizedBox(height: 100)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeroBanner(Color primary) {
+    return SliverAppBar(
+      expandedHeight: 220,
+      pinned: true,
+      backgroundColor: primary,
+      flexibleSpace: FlexibleSpaceBar(
+        background: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [primary, primary.withBlue(100)],
+            ),
+          ),
+          child: Stack(
+            children: [
+              Positioned(
+                right: -20, top: -20,
+                child: Icon(Icons.wb_sunny_rounded, size: 200, color: Colors.white.withOpacity(0.1)),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 80, 24, 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Text('Witaj w Bastionie! 🐾', style: GoogleFonts.poppins(color: Colors.white70, fontSize: 16)),
+                    const SizedBox(height: 4),
+                    Text(_system?['app_name'] ?? 'Gorzów', 
+                      style: GoogleFonts.poppins(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w800)),
+                    if (_weather != null) ...[
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          const Icon(Icons.thermostat_rounded, color: Colors.white, size: 20),
+                          Text(' ${_weather!['temperature']}°C', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                          const SizedBox(width: 16),
+                          const Icon(Icons.location_on_rounded, color: Colors.white, size: 20),
+                          const Text(' Gorzów Wlkp.', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        IconButton(icon: const Icon(Icons.admin_panel_settings, color: Colors.white), onPressed: () => setState(() => _isEditMode = !_isEditMode)),
+        IconButton(icon: const Icon(Icons.refresh, color: Colors.white), onPressed: _boot),
       ],
     );
   }
 
+  Widget _buildQuickAction(dynamic t, Color primary) {
+    return GestureDetector(
+      onTap: () => _handleTileTap(t),
+      child: Container(
+        width: 85,
+        margin: const EdgeInsets.symmetric(horizontal: 6),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
+              ),
+              child: Icon(_getIcon(t['icon']), color: primary, size: 28),
+            ),
+            const SizedBox(height: 8),
+            Text(t['title'] ?? '', 
+              maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.black54)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildModernCard(dynamic t, Color primary) {
+    return GestureDetector(
+      onTap: () => _handleTileTap(t),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 15, offset: const Offset(0, 8))],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: Stack(
+            children: [
+              if (t['type'] == 'folder')
+                Positioned(right: -10, top: -10, child: Icon(Icons.folder_rounded, size: 80, color: primary.withOpacity(0.05))),
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(color: primary.withOpacity(0.1), borderRadius: BorderRadius.circular(14)),
+                      child: Icon(_getIcon(t['icon']), color: primary, size: 24),
+                    ),
+                    Text(t['title'] ?? '', style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   void _handleTileTap(dynamic t) {
+    if (t['type'] == 'folder') {
+      _showFolder(t);
+      return;
+    }
+
     String url = t['url'] ?? '';
     if (t['type'] == 'map') {
       url = '$_baseUrl/map.php?data=${t['data_url']}&lat=${_currentPos?.latitude ?? 52.73}&lng=${_currentPos?.longitude ?? 15.23}';
@@ -232,6 +306,49 @@ class _TileDashboardState extends State<TileDashboard> {
     } else if (t['type'] == 'web' || t['type'] == 'map') {
       Navigator.push(context, MaterialPageRoute(builder: (c) => WebViewPage(url: url, title: t['title'])));
     }
+  }
+
+  void _showFolder(dynamic folder) {
+    final children = _tiles.where((t) => t['parent_id'] == folder['id']).toList();
+    Color primaryColor = Color(int.parse((_system?['primary_color'] ?? '#008C45').replaceAll('#', '0xFF')));
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.7,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)))),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Icon(_getIcon(folder['icon']), color: primaryColor, size: 28),
+                const SizedBox(width: 12),
+                Text(folder['title'] ?? 'Folder', style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.bold)),
+              ],
+            ),
+            const SizedBox(height: 24),
+            Expanded(
+              child: children.isEmpty 
+                ? const Center(child: Text('Ten folder jest pusty 🐾'))
+                : GridView.builder(
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, mainAxisSpacing: 20, crossAxisSpacing: 20, childAspectRatio: 0.8),
+                    itemCount: children.length,
+                    itemBuilder: (context, index) => _buildQuickAction(children[index], primaryColor),
+                  ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   IconData _getIcon(String? icon) {
