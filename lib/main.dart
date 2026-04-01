@@ -42,7 +42,7 @@ class TileDashboard extends StatefulWidget {
 
 class _TileDashboardState extends State<TileDashboard> {
   final String _baseUrl = 'https://gorzow.kawak.pl';
-  double _currentAppVersion = 3.6; // v2.0
+  double _currentAppVersion = 3.7; // v2.0
   Map<String, dynamic>? _system;
   List<dynamic> _tiles = [];
   bool _loading = true;
@@ -196,45 +196,83 @@ class _TileDashboardState extends State<TileDashboard> {
   }
 
   Widget _buildHeroBanner(Color primary) {
+    // Logika pogodowo-dobowa
+    final hour = DateTime.now().hour;
+    final isNight = hour < 6 || hour > 20;
+    final weatherCode = _weather?['weathercode'] ?? 0;
+    
+    IconData weatherIcon = Icons.wb_sunny_rounded;
+    List<Color> bannerColors = [primary, primary.withBlue(150)];
+    String welcomeMsg = 'Witaj w Bastionie! 🐾';
+
+    // Interpretacja kodu pogodowego (WMO)
+    if (weatherCode == 0) {
+      weatherIcon = isNight ? Icons.nightlight_round : Icons.wb_sunny_rounded;
+      bannerColors = isNight ? [const Color(0xFF1A237E), const Color(0xFF000000)] : [const Color(0xFFFFB300), const Color(0xFFF57C00)];
+    } else if (weatherCode <= 3) {
+      weatherIcon = isNight ? Icons.cloudy_snowing : Icons.wb_cloudy_rounded;
+      bannerColors = isNight ? [const Color(0xFF303F9F), const Color(0xFF1A237E)] : [const Color(0xFF4FC3F7), const Color(0xFF0288D1)];
+    } else if (weatherCode >= 51) {
+      weatherIcon = Icons.umbrella_rounded;
+      bannerColors = [const Color(0xFF455A64), const Color(0xFF263238)];
+      welcomeMsg = 'Pada w Gorzowie... 🌧️';
+    }
+
     return SliverAppBar(
-      expandedHeight: 220,
+      expandedHeight: 240,
       pinned: true,
-      backgroundColor: primary,
+      backgroundColor: bannerColors[0],
       flexibleSpace: FlexibleSpaceBar(
-        background: Container(
+        background: AnimatedContainer(
+          duration: const Duration(seconds: 2),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [primary, primary.withBlue(100)],
+              colors: bannerColors,
             ),
           ),
           child: Stack(
             children: [
+              // Efekt "Słońca / Księżyca" w tle
               Positioned(
-                right: -20, top: -20,
-                child: Icon(Icons.wb_sunny_rounded, size: 200, color: Colors.white.withOpacity(0.1)),
+                right: -30, top: -30,
+                child: Opacity(
+                  opacity: 0.2,
+                  child: Icon(weatherIcon, size: 250, color: Colors.white),
+                ),
               ),
+              // Treść Banera
               Padding(
-                padding: const EdgeInsets.fromLTRB(24, 80, 24, 20),
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 25),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    Text('Witaj w Bastionie! 🐾', style: GoogleFonts.poppins(color: Colors.white70, fontSize: 16)),
+                    Text(welcomeMsg, style: GoogleFonts.poppins(color: Colors.white70, fontSize: 16, fontWeight: FontWeight.w500)),
                     const SizedBox(height: 4),
                     Text(_system?['app_name'] ?? 'Gorzów', 
-                      style: GoogleFonts.poppins(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w800)),
+                      style: GoogleFonts.poppins(color: Colors.white, fontSize: 36, fontWeight: FontWeight.w900, letterSpacing: -1)),
                     if (_weather != null) ...[
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          const Icon(Icons.thermostat_rounded, color: Colors.white, size: 20),
-                          Text(' ${_weather!['temperature']}°C', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                          const SizedBox(width: 16),
-                          const Icon(Icons.location_on_rounded, color: Colors.white, size: 20),
-                          const Text(' Gorzów Wlkp.', style: TextStyle(color: Colors.white70, fontSize: 14)),
-                        ],
+                      const SizedBox(height: 15),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.white.withOpacity(0.2)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(weatherIcon, color: Colors.white, size: 22),
+                            const SizedBox(width: 10),
+                            Text('${_weather!['temperature']}°C', 
+                              style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800)),
+                            const VerticalDivider(color: Colors.white24, width: 20),
+                            const Text('Gorzów Wlkp.', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
+                          ],
+                        ),
                       ),
                     ],
                   ],
@@ -245,7 +283,6 @@ class _TileDashboardState extends State<TileDashboard> {
         ),
       ),
       actions: [
-        IconButton(icon: const Icon(Icons.admin_panel_settings, color: Colors.white), onPressed: () => setState(() => _isEditMode = !_isEditMode)),
         IconButton(icon: const Icon(Icons.refresh, color: Colors.white), onPressed: _boot),
       ],
     );
