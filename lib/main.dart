@@ -73,8 +73,9 @@ class _TileDashboardState extends State<TileDashboard> {
 
   Future<void> _fetchData() async {
     try {
-      final resSys = await http.get(Uri.parse('$_baseUrl/dane/system.json')).timeout(const Duration(seconds: 5));
-      final resTiles = await http.get(Uri.parse('$_baseUrl/dane/tiles.json')).timeout(const Duration(seconds: 5));
+      final ts = DateTime.now().millisecondsSinceEpoch;
+      final resSys = await http.get(Uri.parse('$_baseUrl/dane/system.json?t=$ts')).timeout(const Duration(seconds: 5));
+      final resTiles = await http.get(Uri.parse('$_baseUrl/dane/tiles.json?t=$ts')).timeout(const Duration(seconds: 5));
       if (resSys.statusCode == 200 && resTiles.statusCode == 200) {
         final sys = jsonDecode(resSys.body);
         final tiles = jsonDecode(resTiles.body)['tiles'] as List;
