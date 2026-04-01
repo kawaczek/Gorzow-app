@@ -42,7 +42,7 @@ class TileDashboard extends StatefulWidget {
 
 class _TileDashboardState extends State<TileDashboard> {
   final String _baseUrl = 'https://gorzow.kawak.pl';
-  double _currentAppVersion = 2.0; // v2.0
+  double _currentAppVersion = 3.4; // v2.0
   Map<String, dynamic>? _system;
   List<dynamic> _tiles = [];
   bool _loading = true;
