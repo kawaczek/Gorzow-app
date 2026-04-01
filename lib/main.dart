@@ -11,6 +11,7 @@ import 'package:external_app_launcher/external_app_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:reorderable_grid_view/reorderable_grid_view.dart';
 import 'package:intl/intl.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 class MyHttpOverrides extends HttpOverrides {
   @override
