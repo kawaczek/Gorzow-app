@@ -63,8 +63,8 @@ class _TileDashboardState extends State<TileDashboard> {
   Future<void> _loadCache() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final cachedSystem = prefs.getString('cache_system');
-      final cachedTiles = prefs.getString('cache_tiles');
+      final cachedSystem = prefs.getString('v3_system');
+      final cachedTiles = prefs.getString('v3_tiles');
       if (cachedSystem != null) setState(() => _system = jsonDecode(cachedSystem));
       if (cachedTiles != null) setState(() => _tiles = jsonDecode(cachedTiles));
       if (_system != null || _tiles.isNotEmpty) setState(() => _loading = false);
@@ -74,28 +74,38 @@ class _TileDashboardState extends State<TileDashboard> {
   Future<void> _fetchData() async {
     try {
       final ts = DateTime.now().millisecondsSinceEpoch;
-      final resSys = await http.get(Uri.parse('$_baseUrl/dane/system.json?t=$ts')).timeout(const Duration(seconds: 10));
-      final resTiles = await http.get(Uri.parse('$_baseUrl/dane/tiles.json?t=$ts')).timeout(const Duration(seconds: 10));
+      final resSys = await http.get(Uri.parse('$_baseUrl/dane/system.json?nocache=$ts')).timeout(const Duration(seconds: 15));
+      final resTiles = await http.get(Uri.parse('$_baseUrl/dane/tiles.json?nocache=$ts')).timeout(const Duration(seconds: 15));
       
-      debugPrint('Sync: System(${resSys.statusCode}), Tiles(${resTiles.statusCode})');
-
       if (resSys.statusCode == 200 && resTiles.statusCode == 200) {
         final sys = jsonDecode(resSys.body);
         final tilesRaw = jsonDecode(resTiles.body);
         final List tiles = (tilesRaw['tiles'] ?? []) as List;
         
-        debugPrint('Sync: Got ${tiles.length} items.');
         final prefs = await SharedPreferences.getInstance();
-        prefs.setString('cache_system', jsonEncode(sys));
-        prefs.setString('cache_tiles', jsonEncode(tiles));
-        setState(() { _system = sys; _tiles = tiles; _loading = false; });
+        await prefs.setString('v3_system', jsonEncode(sys));
+        await prefs.setString('v3_tiles', jsonEncode(tiles));
+        
+        setState(() { 
+          _system = sys; 
+          _tiles = tiles; 
+          _loading = false; 
+        });
       } else {
+        _showSnack('Błąd serwera: ${resSys.statusCode}');
         setState(() => _loading = false);
       }
     } catch (e) { 
-      debugPrint('Fetch Error: $e'); 
+      _showSnack('Brak połączenia z Bastionem 🐾');
       setState(() => _loading = false); 
     }
+  }
+
+  void _showSnack(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), backgroundColor: Colors.redAccent, behavior: SnackBarBehavior.floating)
+    );
   }
 
   Future<void> _fetchWeather() async {
