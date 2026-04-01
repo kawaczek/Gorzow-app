@@ -46,9 +46,10 @@ class TileDashboard extends StatefulWidget {
 
 class _TileDashboardState extends State<TileDashboard> {
   final String _baseUrl = 'https://gorzow.kawak.pl';
-  double _currentAppVersion = 4.0; // v2.0
+  double _currentAppVersion = 4.4; // v2.0
   Map<String, dynamic>? _system;
   List<dynamic> _tiles = [];
+  List<dynamic> _events = [];
   bool _loading = true;
   bool _isEditMode = false;
   Position? _currentPos;
@@ -60,8 +61,18 @@ class _TileDashboardState extends State<TileDashboard> {
   Future<void> _boot() async {
     await _loadCache();
     await _fetchData();
+    _fetchEvents();
     _fetchWeather();
     _currentPos = await _determinePosition();
+  }
+
+  Future<void> _fetchEvents() async {
+    try {
+      final res = await http.get(Uri.parse('https://kalendarz.gorzow.pl/api.php?limit=10')).timeout(const Duration(seconds: 10));
+      if (res.statusCode == 200) {
+        setState(() => _events = jsonDecode(res.body)['events'] ?? []);
+      }
+    } catch (e) { debugPrint('Events Error: $e'); }
   }
 
   Future<void> _loadCache() async {
@@ -169,9 +180,34 @@ class _TileDashboardState extends State<TileDashboard> {
               ),
             ),
           ),
+          if (_events.isNotEmpty) ...[
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 24, 16, 12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Dzieje się w Gorzowie 🎭', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+                    TextButton(onPressed: () {}, child: Text('Zobacz wszystkie', style: TextStyle(color: primaryColor))),
+                  ],
+                ),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: SizedBox(
+                height: 200,
+                child: ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  scrollDirection: Axis.horizontal,
+                  itemCount: _events.length,
+                  itemBuilder: (context, index) => _buildEventCard(_events[index], primaryColor),
+                ),
+              ),
+            ),
+          ],
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
               child: Text('Odkryj Miasto 🏙️', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
             ),
           ),
@@ -346,6 +382,102 @@ class _TileDashboardState extends State<TileDashboard> {
                       child: Icon(_getIcon(t['icon']), color: primary, size: 24),
                     ),
                     Text(t['title'] ?? '', style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEventCard(dynamic ev, Color primary) {
+    return GestureDetector(
+      onTap: () => _showEventDetail(ev),
+      child: Container(
+        width: 280,
+        margin: const EdgeInsets.symmetric(horizontal: 8),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          image: DecorationImage(image: NetworkImage(ev['photo'] ?? ''), fit: BoxFit.cover),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 5))],
+        ),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.transparent, Colors.black.withOpacity(0.8)]),
+          ),
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              Text(ev['title'] ?? '', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  const Icon(Icons.calendar_today, color: Colors.white70, size: 12),
+                  const SizedBox(width: 6),
+                  Text(ev['dtstart']?.split(' ')[0] ?? '', style: const TextStyle(color: Colors.white70, fontSize: 11)),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showEventDetail(dynamic ev) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.9,
+        maxChildSize: 0.95,
+        minChildSize: 0.5,
+        builder: (_, controller) => Container(
+          decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(32))),
+          child: ListView(
+            controller: controller,
+            children: [
+              Container(
+                height: 250,
+                decoration: BoxDecoration(
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                  image: DecorationImage(image: NetworkImage(ev['photo'] ?? ''), fit: BoxFit.cover),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(ev['title'] ?? '', style: GoogleFonts.poppins(fontSize: 24, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(Icons.location_on, color: Colors.grey[600], size: 18),
+                        const SizedBox(width: 8),
+                        Expanded(child: Text(ev['place_name'] ?? '', style: TextStyle(color: Colors.grey[600]))),
+                      ],
+                    ),
+                    const Divider(height: 40),
+                    Text('O wydarzeniu', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 12),
+                    Text(ev['description']?.replaceAll(RegExp(r'<[^>]*>|&[^;]+;'), '') ?? '', style: const TextStyle(height: 1.6, color: Colors.black87)),
+                    const SizedBox(height: 30),
+                    if (ev['link'] != null)
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () => _handleTileTap({'type': 'web', 'url': ev['link'], 'title': 'Bilety / Info'}),
+                          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF008C45), padding: const EdgeInsets.all(16), shape: BorderRadius.circular(16)),
+                          child: const Text('Szczegóły / Bilety', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                        ),
+                      ),
                   ],
                 ),
               ),
