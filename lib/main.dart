@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
@@ -9,6 +10,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'package:external_app_launcher/external_app_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:reorderable_grid_view/reorderable_grid_view.dart';
+import 'package:intl/intl.dart';
 
 class MyHttpOverrides extends HttpOverrides {
   @override
@@ -42,7 +44,7 @@ class TileDashboard extends StatefulWidget {
 
 class _TileDashboardState extends State<TileDashboard> {
   final String _baseUrl = 'https://gorzow.kawak.pl';
-  double _currentAppVersion = 3.8; // v2.0
+  double _currentAppVersion = 3.9; // v2.0
   Map<String, dynamic>? _system;
   List<dynamic> _tiles = [];
   bool _loading = true;
@@ -110,8 +112,8 @@ class _TileDashboardState extends State<TileDashboard> {
 
   Future<void> _fetchWeather() async {
     try {
-      final res = await http.get(Uri.parse('https://api.open-meteo.com/v1/forecast?latitude=52.73&longitude=15.23&current_weather=true&timezone=Europe/Berlin'));
-      if (res.statusCode == 200) setState(() => _weather = jsonDecode(res.body)['current_weather']);
+      final res = await http.get(Uri.parse('https://api.open-meteo.com/v1/forecast?latitude=52.73&longitude=15.23&current_weather=true&hourly=temperature_2m,weathercode&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=Europe/Berlin'));
+      if (res.statusCode == 200) setState(() => _weather = jsonDecode(res.body));
     } catch (e) { debugPrint('Weather Error: $e'); }
   }
 
@@ -255,23 +257,26 @@ class _TileDashboardState extends State<TileDashboard> {
                       style: GoogleFonts.poppins(color: Colors.white, fontSize: 36, fontWeight: FontWeight.w900, letterSpacing: -1)),
                     if (_weather != null) ...[
                       const SizedBox(height: 15),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: Colors.white.withOpacity(0.2)),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(weatherIcon, color: Colors.white, size: 22),
-                            const SizedBox(width: 10),
-                            Text('${_weather!['temperature']}°C', 
-                              style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800)),
-                            const VerticalDivider(color: Colors.white24, width: 20),
-                            const Text('Gorzów Wlkp.', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
-                          ],
+                      GestureDetector(
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (c) => WeatherDetailPage(data: _weather!))),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: Colors.white.withOpacity(0.2)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(weatherIcon, color: Colors.white, size: 22),
+                              const SizedBox(width: 10),
+                              Text('${_weather!['current_weather']['temperature']}°C', 
+                                style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800)),
+                              const VerticalDivider(color: Colors.white24, width: 20),
+                              const Text('Gorzów Wlkp.', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
+                            ],
+                          ),
                         ),
                       ),
                     ],
@@ -431,6 +436,119 @@ class _TileDashboardState extends State<TileDashboard> {
       case 'info': return Icons.info_outline_rounded;
       default: return Icons.apps_rounded;
     }
+  }
+}
+
+class WeatherDetailPage extends StatelessWidget {
+  final Map<String, dynamic> data;
+  const WeatherDetailPage({super.key, required this.data});
+
+  @override
+  Widget build(BuildContext context) {
+    final current = data['current_weather'];
+    final daily = data['daily'];
+    final hourly = data['hourly'];
+    final bool isDay = (current['is_day'] ?? 1) == 1;
+
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0, iconTheme: const IconThemeData(color: Colors.white)),
+      body: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: isDay ? [const Color(0xFF4FC3F7), const Color(0xFF0288D1)] : [const Color(0xFF1A237E), const Color(0xFF000000)],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              Text('Gorzów Wlkp.', style: GoogleFonts.poppins(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
+              Text(DateFormat('EEEE, d MMMM').format(DateTime.now()), style: const TextStyle(color: Colors.white70)),
+              const SizedBox(height: 30),
+              const Icon(Icons.wb_cloudy_rounded, size: 100, color: Colors.white),
+              Text('${current['temperature']}°', style: GoogleFonts.poppins(color: Colors.white, fontSize: 80, fontWeight: FontWeight.w200)),
+              Text('Wiatr: ${current['windspeed']} km/h', style: const TextStyle(color: Colors.white70, fontSize: 18)),
+              const SizedBox(height: 40),
+              
+              // Szklana karta prognozy godzinowej
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(30),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                    child: Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(30),
+                        border: Border.all(color: Colors.white.withOpacity(0.2)),
+                      ),
+                      child: Column(
+                        children: [
+                          const Row(children: [Icon(Icons.access_time, color: Colors.white70, size: 18), SizedBox(width: 8), Text('PROGNOZA GODZINOWA', style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold))]),
+                          const SizedBox(height: 15),
+                          SizedBox(
+                            height: 80,
+                            child: ListView.builder(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: 12,
+                              itemBuilder: (context, i) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(right: 25),
+                                  child: Column(
+                                    children: [
+                                      Text('${(DateTime.now().hour + i) % 24}:00', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                                      const SizedBox(height: 8),
+                                      Text('${hourly['temperature_2m'][i]}°', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              
+              // Lista na 7 dni
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.all(20),
+                  itemCount: 7,
+                  itemBuilder: (context, i) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 15),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(DateFormat('EEEE').format(DateTime.now().add(Duration(days: i))), style: const TextStyle(color: Colors.white, fontSize: 16)),
+                          Row(
+                            children: [
+                              const Icon(Icons.wb_sunny_rounded, color: Colors.white, size: 20),
+                              const SizedBox(width: 20),
+                              Text('${daily['temperature_2m_max'][i]}°', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                              const SizedBox(width: 10),
+                              Text('${daily['temperature_2m_min'][i]}°', style: const TextStyle(color: Colors.white54)),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
