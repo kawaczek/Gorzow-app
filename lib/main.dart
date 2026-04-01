@@ -42,7 +42,7 @@ class TileDashboard extends StatefulWidget {
 
 class _TileDashboardState extends State<TileDashboard> {
   final String _baseUrl = 'https://gorzow.kawak.pl';
-  double _currentAppVersion = 3.7; // v2.0
+  double _currentAppVersion = 3.8; // v2.0
   Map<String, dynamic>? _system;
   List<dynamic> _tiles = [];
   bool _loading = true;
@@ -196,22 +196,22 @@ class _TileDashboardState extends State<TileDashboard> {
   }
 
   Widget _buildHeroBanner(Color primary) {
-    // Logika pogodowo-dobowa
-    final hour = DateTime.now().hour;
-    final isNight = hour < 6 || hour > 20;
-    final weatherCode = _weather?['weathercode'] ?? 0;
+    // Logika pogodowo-dobowa oparta na danych astronomicznych
+    final weatherData = _weather;
+    final bool isDay = (weatherData?['is_day'] ?? 1) == 1; // 1 = dzień, 0 = noc
+    final weatherCode = weatherData?['weathercode'] ?? 0;
     
     IconData weatherIcon = Icons.wb_sunny_rounded;
     List<Color> bannerColors = [primary, primary.withBlue(150)];
     String welcomeMsg = 'Witaj w Bastionie! 🐾';
 
-    // Interpretacja kodu pogodowego (WMO)
+    // Interpretacja kodu pogodowego (WMO) + Dzień/Noc
     if (weatherCode == 0) {
-      weatherIcon = isNight ? Icons.nightlight_round : Icons.wb_sunny_rounded;
-      bannerColors = isNight ? [const Color(0xFF1A237E), const Color(0xFF000000)] : [const Color(0xFFFFB300), const Color(0xFFF57C00)];
+      weatherIcon = isDay ? Icons.wb_sunny_rounded : Icons.nightlight_round;
+      bannerColors = isDay ? [const Color(0xFFFFB300), const Color(0xFFF57C00)] : [const Color(0xFF1A237E), const Color(0xFF000000)];
     } else if (weatherCode <= 3) {
-      weatherIcon = isNight ? Icons.cloudy_snowing : Icons.wb_cloudy_rounded;
-      bannerColors = isNight ? [const Color(0xFF303F9F), const Color(0xFF1A237E)] : [const Color(0xFF4FC3F7), const Color(0xFF0288D1)];
+      weatherIcon = isDay ? Icons.wb_cloudy_rounded : Icons.cloudy_snowing;
+      bannerColors = isDay ? [const Color(0xFF4FC3F7), const Color(0xFF0288D1)] : [const Color(0xFF303F9F), const Color(0xFF1A237E)];
     } else if (weatherCode >= 51) {
       weatherIcon = Icons.umbrella_rounded;
       bannerColors = [const Color(0xFF455A64), const Color(0xFF263238)];
