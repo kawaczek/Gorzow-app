@@ -474,7 +474,11 @@ class _TileDashboardState extends State<TileDashboard> {
                         width: double.infinity,
                         child: ElevatedButton(
                           onPressed: () => _handleTileTap({'type': 'web', 'url': ev['link'], 'title': 'Bilety / Info'}),
-                          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF008C45), padding: const EdgeInsets.all(16), shape: BorderRadius.circular(16)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF008C45), 
+                            padding: const EdgeInsets.all(16), 
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))
+                          ),
                           child: const Text('Szczegóły / Bilety', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                         ),
                       ),
