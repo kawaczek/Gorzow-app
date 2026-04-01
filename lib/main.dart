@@ -17,9 +17,10 @@ class MyHttpOverrides extends HttpOverrides {
   HttpClient createHttpClient(SecurityContext? context) => super.createHttpClient(context)..badCertificateCallback = (cert, host, port) => true;
 }
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   HttpOverrides.global = MyHttpOverrides();
+  await initializeDateFormatting('pl_PL', null);
   runApp(const GorzowApp());
 }
 
@@ -44,7 +45,7 @@ class TileDashboard extends StatefulWidget {
 
 class _TileDashboardState extends State<TileDashboard> {
   final String _baseUrl = 'https://gorzow.kawak.pl';
-  double _currentAppVersion = 3.9; // v2.0
+  double _currentAppVersion = 4.0; // v2.0
   Map<String, dynamic>? _system;
   List<dynamic> _tiles = [];
   bool _loading = true;
@@ -198,16 +199,15 @@ class _TileDashboardState extends State<TileDashboard> {
   }
 
   Widget _buildHeroBanner(Color primary) {
-    // Logika pogodowo-dobowa oparta na danych astronomicznych
     final weatherData = _weather;
-    final bool isDay = (weatherData?['is_day'] ?? 1) == 1; // 1 = dzień, 0 = noc
-    final weatherCode = weatherData?['weathercode'] ?? 0;
+    final current = weatherData?['current_weather'];
+    final bool isDay = (current?['is_day'] ?? 1) == 1;
+    final weatherCode = current?['weathercode'] ?? 0;
     
     IconData weatherIcon = Icons.wb_sunny_rounded;
     List<Color> bannerColors = [primary, primary.withBlue(150)];
-    String welcomeMsg = 'Witaj w Bastionie! 🐾';
+    String welcomeMsg = isDay ? 'Witaj w Bastionie! 🐾' : 'Dobry wieczór, Szefie! 🌙';
 
-    // Interpretacja kodu pogodowego (WMO) + Dzień/Noc
     if (weatherCode == 0) {
       weatherIcon = isDay ? Icons.wb_sunny_rounded : Icons.nightlight_round;
       bannerColors = isDay ? [const Color(0xFFFFB300), const Color(0xFFF57C00)] : [const Color(0xFF1A237E), const Color(0xFF000000)];
@@ -236,7 +236,6 @@ class _TileDashboardState extends State<TileDashboard> {
           ),
           child: Stack(
             children: [
-              // Efekt "Słońca / Księżyca" w tle
               Positioned(
                 right: -30, top: -30,
                 child: Opacity(
@@ -244,7 +243,6 @@ class _TileDashboardState extends State<TileDashboard> {
                   child: Icon(weatherIcon, size: 250, color: Colors.white),
                 ),
               ),
-              // Treść Banera
               Padding(
                 padding: const EdgeInsets.fromLTRB(24, 0, 24, 25),
                 child: Column(
@@ -255,7 +253,7 @@ class _TileDashboardState extends State<TileDashboard> {
                     const SizedBox(height: 4),
                     Text(_system?['app_name'] ?? 'Gorzów', 
                       style: GoogleFonts.poppins(color: Colors.white, fontSize: 36, fontWeight: FontWeight.w900, letterSpacing: -1)),
-                    if (_weather != null) ...[
+                    if (current != null) ...[
                       const SizedBox(height: 15),
                       GestureDetector(
                         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (c) => WeatherDetailPage(data: _weather!))),
@@ -271,7 +269,7 @@ class _TileDashboardState extends State<TileDashboard> {
                             children: [
                               Icon(weatherIcon, color: Colors.white, size: 22),
                               const SizedBox(width: 10),
-                              Text('${_weather!['current_weather']['temperature']}°C', 
+                              Text('${current['temperature']}°C', 
                                 style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800)),
                               const VerticalDivider(color: Colors.white24, width: 20),
                               const Text('Gorzów Wlkp.', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
@@ -443,6 +441,16 @@ class WeatherDetailPage extends StatelessWidget {
   final Map<String, dynamic> data;
   const WeatherDetailPage({super.key, required this.data});
 
+  String _getWeatherDesc(int code) {
+    if (code == 0) return 'Czyste niebo';
+    if (code <= 3) return 'Zachmurzenie';
+    if (code <= 48) return 'Mgła';
+    if (code <= 65) return 'Opady deszczu';
+    if (code <= 75) return 'Opady śniegu';
+    if (code <= 99) return 'Burza';
+    return 'Pogoda';
+  }
+
   @override
   Widget build(BuildContext context) {
     final current = data['current_weather'];
@@ -466,14 +474,14 @@ class WeatherDetailPage extends StatelessWidget {
           child: Column(
             children: [
               Text('Gorzów Wlkp.', style: GoogleFonts.poppins(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
-              Text(DateFormat('EEEE, d MMMM').format(DateTime.now()), style: const TextStyle(color: Colors.white70)),
+              Text(DateFormat('d MMMM yyyy', 'pl_PL').format(DateTime.now()), style: const TextStyle(color: Colors.white70)),
               const SizedBox(height: 30),
-              const Icon(Icons.wb_cloudy_rounded, size: 100, color: Colors.white),
+              Icon(isDay ? Icons.wb_sunny_rounded : Icons.nightlight_round, size: 100, color: Colors.white),
               Text('${current['temperature']}°', style: GoogleFonts.poppins(color: Colors.white, fontSize: 80, fontWeight: FontWeight.w200)),
-              Text('Wiatr: ${current['windspeed']} km/h', style: const TextStyle(color: Colors.white70, fontSize: 18)),
+              Text(_getWeatherDesc(current['weathercode']), style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+              Text('Wiatr: ${current['windspeed']} km/h', style: const TextStyle(color: Colors.white70, fontSize: 16)),
               const SizedBox(height: 40),
               
-              // Szklana karta prognozy godzinowej
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: ClipRRect(
@@ -482,11 +490,7 @@ class WeatherDetailPage extends StatelessWidget {
                     filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                     child: Container(
                       padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(30),
-                        border: Border.all(color: Colors.white.withOpacity(0.2)),
-                      ),
+                      decoration: BoxDecoration(color: Colors.white.withOpacity(0.1), borderRadius: BorderRadius.circular(30), border: Border.all(color: Colors.white.withOpacity(0.2))),
                       child: Column(
                         children: [
                           const Row(children: [Icon(Icons.access_time, color: Colors.white70, size: 18), SizedBox(width: 8), Text('PROGNOZA GODZINOWA', style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold))]),
@@ -517,22 +521,23 @@ class WeatherDetailPage extends StatelessWidget {
                 ),
               ),
               
-              // Lista na 7 dni
               Expanded(
                 child: ListView.builder(
                   padding: const EdgeInsets.all(20),
                   itemCount: 7,
                   itemBuilder: (context, i) {
+                    final date = DateTime.now().add(Duration(days: i));
+                    final dayName = i == 0 ? 'Dzisiaj' : i == 1 ? 'Jutro' : DateFormat('EEEE', 'pl_PL').format(date);
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 15),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(DateFormat('EEEE').format(DateTime.now().add(Duration(days: i))), style: const TextStyle(color: Colors.white, fontSize: 16)),
+                          Text(dayName, style: const TextStyle(color: Colors.white, fontSize: 16)),
                           Row(
                             children: [
-                              const Icon(Icons.wb_sunny_rounded, color: Colors.white, size: 20),
-                              const SizedBox(width: 20),
+                              Text(_getWeatherDesc(daily['weathercode'][i]), style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                              const SizedBox(width: 15),
                               Text('${daily['temperature_2m_max'][i]}°', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                               const SizedBox(width: 10),
                               Text('${daily['temperature_2m_min'][i]}°', style: const TextStyle(color: Colors.white54)),
