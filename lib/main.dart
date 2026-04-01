@@ -74,11 +74,17 @@ class _TileDashboardState extends State<TileDashboard> {
   Future<void> _fetchData() async {
     try {
       final ts = DateTime.now().millisecondsSinceEpoch;
-      final resSys = await http.get(Uri.parse('$_baseUrl/dane/system.json?t=$ts')).timeout(const Duration(seconds: 5));
-      final resTiles = await http.get(Uri.parse('$_baseUrl/dane/tiles.json?t=$ts')).timeout(const Duration(seconds: 5));
+      final resSys = await http.get(Uri.parse('$_baseUrl/dane/system.json?t=$ts')).timeout(const Duration(seconds: 10));
+      final resTiles = await http.get(Uri.parse('$_baseUrl/dane/tiles.json?t=$ts')).timeout(const Duration(seconds: 10));
+      
+      debugPrint('Sync: System(${resSys.statusCode}), Tiles(${resTiles.statusCode})');
+
       if (resSys.statusCode == 200 && resTiles.statusCode == 200) {
         final sys = jsonDecode(resSys.body);
-        final tiles = jsonDecode(resTiles.body)['tiles'] as List;
+        final tilesRaw = jsonDecode(resTiles.body);
+        final List tiles = (tilesRaw['tiles'] ?? []) as List;
+        
+        debugPrint('Sync: Got ${tiles.length} items.');
         final prefs = await SharedPreferences.getInstance();
         prefs.setString('cache_system', jsonEncode(sys));
         prefs.setString('cache_tiles', jsonEncode(tiles));
@@ -119,7 +125,12 @@ class _TileDashboardState extends State<TileDashboard> {
       primaryColor = const Color(0xFF008C45);
     }
 
-    final quickActions = _tiles.where((t) => t['parent_id'] == null || t['parent_id'] == '').toList();
+    final quickActions = _tiles.where((t) {
+      final pid = t['parent_id'];
+      return pid == null || pid == '' || pid == 'null';
+    }).toList();
+    
+    debugPrint('UI: Rendering ${quickActions.length} top tiles.');
     
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
