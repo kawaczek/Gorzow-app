@@ -160,8 +160,11 @@ class _TileDashboardState extends State<TileDashboard> {
                 childAspectRatio: 1.1,
               ),
               delegate: SliverChildBuilderDelegate(
-                (context, index) => _buildModernCard(_tiles[index], primaryColor),
-                childCount: _tiles.length,
+                (context, index) {
+                  final topLevelTiles = _tiles.where((t) => t['parent_id'] == null || t['parent_id'] == '').toList();
+                  return _buildModernCard(topLevelTiles[index], primaryColor);
+                },
+                childCount: _tiles.where((t) => t['parent_id'] == null || t['parent_id'] == '').length,
               ),
             ),
           ),
@@ -358,6 +361,16 @@ class _TileDashboardState extends State<TileDashboard> {
       case 'directions_bus': return Icons.directions_bus_rounded;
       case 'map': return Icons.map_rounded;
       case 'calendar_month': return Icons.calendar_month_rounded;
+      case 'wb_sunny': return Icons.wb_sunny_rounded;
+      case 'account_balance': return Icons.account_balance_rounded;
+      case 'feed': return Icons.feed_rounded;
+      case 'radio': return Icons.radio_rounded;
+      case 'public': return Icons.public_rounded;
+      case 'delete_outline': return Icons.delete_outline_rounded;
+      case 'folder': return Icons.folder_rounded;
+      case 'thermostat': return Icons.thermostat_rounded;
+      case 'location_on': return Icons.location_on_rounded;
+      case 'info': return Icons.info_outline_rounded;
       default: return Icons.apps_rounded;
     }
   }
