@@ -1,235 +1,192 @@
 <?php
 require_once 'auth.php';
-
 if (!checkAuth()) {
 ?>
 <!DOCTYPE html>
 <html lang="pl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Bastion Gorzów - Logowanie</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+    <title>OBERON 7.0 - Wejście</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
     <style>
-        body { display: flex; align-items: center; justify-content: center; height: 100vh; background-color: #f8f9fa; color: #333; }
-        .login-card { max-width: 400px; width: 100%; padding: 2.5rem; border-radius: 16px; background-color: #fff; box-shadow: 0 10px 30px rgba(0,0,0,0.05); border: 1px solid #eee; }
-        .error { color: #ff4757; margin-bottom: 1rem; text-align: center; font-weight: 600; }
-        button { background-color: #008C45 !important; border-color: #008C45 !important; border-radius: 8px; }
-        input { border-radius: 8px !important; }
+        :root { --p: #008C45; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #ffffff; margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; }
+        .login-box { text-align: center; width: 85%; max-width: 320px; }
+        .avatar-circle { width: 80px; height: 80px; background: var(--p); border-radius: 30px; margin: 0 auto 2rem; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; box-shadow: 0 20px 40px rgba(0,140,69,0.2); }
+        h1 { font-weight: 800; font-size: 1.8rem; margin-bottom: 0.5rem; color: #1e293b; }
+        input { background: #f1f5f9; border: 2px solid transparent; padding: 1.2rem; border-radius: 24px; width: 100%; margin: 1.5rem 0; font-size: 1rem; text-align: center; outline: none; transition: 0.3s; box-sizing: border-box; }
+        input:focus { border-color: var(--p); background: white; box-shadow: 0 10px 20px rgba(0,0,0,0.05); }
+        button { background: #1e293b; border: none; padding: 1.2rem; border-radius: 24px; width: 100%; color: white; font-weight: 800; cursor: pointer; transition: 0.3s; }
+        button:active { transform: scale(0.95); }
     </style>
 </head>
 <body>
-    <div class="login-card">
-        <h2 style="text-align: center; color: #008C45; font-weight: 800;">🐾 OBERON System</h2>
-        <p style="text-align: center; margin-bottom: 2rem; color: #666;">Wymagana autoryzacja do Bastionu Gorzów.</p>
-        <?php if (!empty($login_error)) echo '<div class="error">' . htmlspecialchars($login_error) . '</div>'; ?>
+    <div class="login-box">
+        <div class="avatar-circle">🐾</div>
+        <h1>OBERON</h1>
+        <p style="opacity: 0.5; font-size: 0.9rem;">Wpisz Złoty Klucz do Bastionu</p>
         <form method="POST">
             <input type="hidden" name="action" value="login">
-            <input type="password" name="password" placeholder="Hasło Pancernej Bramy" required autofocus>
-            <button type="submit">Wejdź</button>
+            <input type="password" name="password" placeholder="••••••••" required autofocus>
+            <button type="submit">ODBLOKUJ</button>
         </form>
     </div>
 </body>
 </html>
-<?php
-    exit;
-}
-?>
+<?php exit; } ?>
+
 <!DOCTYPE html>
 <html lang="pl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Panel Administratora - Bastion Gorzów</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
-    <link rel="stylesheet" href="assets/style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+    <title>OBERON DASHBOARD</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="assets/style.css">
+    <!-- SortableJS for Drag & Drop -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 </head>
 <body>
-    <nav class="container-fluid" style="background-color: #ffffff; border-bottom: 1px solid #ddd;">
-        <ul>
-            <li><strong style="color: #008C45;">🐾 OBERON Master</strong></li>
-        </ul>
-        <ul>
-            <li><a href="#" class="tab-link active" data-tab="system">⚙️ System</a></li>
-            <li><a href="#" class="tab-link" data-tab="tiles">📱 Dashboard</a></li>
-            <li><a href="#" class="tab-link" data-tab="poi">📍 Mapa POI</a></li>
-            <li>
-                <form method="POST" style="margin:0;">
-                    <input type="hidden" name="action" value="logout">
-                    <button type="submit" class="outline" style="padding: 0.2rem 0.5rem; margin-left: 1rem; color: #ff4757; border-color: #ff4757; font-size: 0.8rem;">Wyjdź</button>
-                </form>
-            </li>
-        </ul>
-    </nav>
+    <div class="app-shell">
+        <!-- TOP BAR -->
+        <header class="top-bar">
+            <div class="user-pill">
+                <div class="mini-avatar">🐾</div>
+                <span>Witaj, <strong>Szefie</strong></span>
+            </div>
+            <div class="ota-status">
+                <span class="pulse-dot"></span> Online
+            </div>
+        </header>
 
-    <main class="container">
-        <!-- ZAKŁADKA: SYSTEM -->
-        <section id="tab-system" class="admin-tab">
-            <div class="card">
-                <h3>⚙️ Konfiguracja Główna</h3>
-                <form id="system-form">
-                    <div class="grid">
-                        <div>
-                            <label for="app_name">Nazwa Aplikacji</label>
+        <!-- MAIN CONTENT (TABS) -->
+        <div class="tab-container">
+            <!-- TAB: SYSTEM -->
+            <div id="tab-system" class="tab-content active">
+                <div class="bento-grid">
+                    <div class="bento-card wide welcome-card">
+                        <h2>⚙️ Ustawienia Bastionu</h2>
+                        <p>Zarządzaj sercem swojej aplikacji.</p>
+                    </div>
+                    <div class="bento-card">
+                        <form id="system-form">
+                            <label>Nazwa Aplikacji</label>
                             <input type="text" id="app_name" required>
-                        </div>
-                        <div>
-                            <label for="primary_color">Kolor Główny</label>
-                            <input type="color" id="primary_color" required style="height: 3.5rem; padding: 0;">
-                        </div>
-                    </div>
-                    <div class="grid">
-                        <div>
-                            <label for="ota_version">Wersja OTA</label>
-                            <input type="number" step="0.1" id="ota_version" required>
-                        </div>
-                        <div>
-                            <label for="map_style">Styl Mapy (Voyager!)</label>
-                            <select id="map_style">
-                                <option value="voyager">CartoDB Voyager (Zalecany)</option>
-                                <option value="light">Light (Jasna)</option>
-                                <option value="dark">Dark (Ciemna)</option>
-                                <option value="satellite">Satellite (Satelita)</option>
-                            </select>
-                        </div>
-                    </div>
-                    <label for="notification">Powiadomienie Globalne</label>
-                    <input type="text" id="notification">
-                    <button type="submit">Zapisz Zmiany Systemowe</button>
-                </form>
-            </div>
-        </section>
-
-        <!-- ZAKŁADKA: KAFELKI -->
-        <section id="tab-tiles" class="admin-tab" style="display:none;">
-            <div class="card">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                    <h3>📱 Ikony i Foldery</h3>
-                    <button class="outline" id="btn-add-tile" style="width: auto;">+ Dodaj Nowy</button>
-                </div>
-                <div id="tiles-list"></div>
-                <button id="btn-save-tiles" style="margin-top: 1.5rem;">Zaktualizuj Dashboard Aplikacji</button>
-            </div>
-        </section>
-
-        <!-- ZAKŁADKA: MAPA POI -->
-        <section id="tab-poi" class="admin-tab" style="display:none;">
-            <div class="card">
-                <h3>📍 Zarządzanie Punktami POI</h3>
-                <div class="grid">
-                    <div>
-                        <label for="poi-category-select">Wybierz Kategorię</label>
-                        <select id="poi-category-select">
-                            <option value="">-- Wybierz lub stwórz --</option>
-                        </select>
-                    </div>
-                    <div style="display: flex; align-items: flex-end;">
-                        <button class="outline" id="btn-new-poi-category" style="margin-bottom: var(--spacing);">Nowa Kategoria</button>
+                            
+                            <div class="grid-half">
+                                <div>
+                                    <label>Kolor Mocy</label>
+                                    <input type="color" id="primary_color">
+                                </div>
+                                <div>
+                                    <label>Styl Mapy</label>
+                                    <select id="map_style">
+                                        <option value="voyager">Voyager</option>
+                                        <option value="light">Clear Light</option>
+                                        <option value="dark">Deep Dark</option>
+                                        <option value="satellite">Satelita</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <label>Powiadomienie</label>
+                            <input type="text" id="notification">
+                            
+                            <button type="submit" class="action-btn main">Zapisz System</button>
+                        </form>
                     </div>
                 </div>
-                
-                <hr>
-                
-                <div id="poi-editor-container" style="display:none;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                        <h4 id="current-poi-title">Edycja: </h4>
-                        <button class="secondary" id="btn-import-poi" style="font-size: 0.8rem; width: auto;">Importuj JSON</button>
-                    </div>
-                    
-                    <div id="admin-map" style="height: 300px; border-radius: 12px; margin-bottom: 1.5rem; border: 1px solid #ddd;"></div>
-                    
-                    <div id="poi-points-list">
-                        <!-- Lista punktów w danej kategorii -->
-                    </div>
-                    
-                    <button id="btn-save-poi" style="margin-top: 1.5rem;">Zapisz Kategorię na Serwerze</button>
+            </div>
+
+            <!-- TAB: TILES (DASHBOARD) -->
+            <div id="tab-tiles" class="tab-content">
+                <div class="section-title">
+                    <h3>📱 Twój Dashboard</h3>
+                    <button id="btn-add-tile" class="circle-btn">+</button>
+                </div>
+                <p class="hint">Przytrzymaj i przeciągnij, aby zmienić kolejność.</p>
+                <div id="tiles-list" class="sortable-list">
+                    <!-- Dynamiczne kafelki -->
+                </div>
+                <div class="floating-save">
+                    <button id="btn-save-tiles" class="action-btn dark">Zapisz Układ</button>
                 </div>
             </div>
-        </section>
-    </main>
 
-    <!-- Modal Nowa Kategoria -->
-    <dialog id="new-cat-modal">
-        <article>
-            <header>
-                <a href="#close" aria-label="Close" class="close" id="btn-close-cat-modal"></a>
-                <h3>Nowa Kategoria POI</h3>
-            </header>
-            <input type="text" id="new-cat-name" placeholder="np. defibrylatory">
-            <footer>
-                <button class="secondary" id="btn-cancel-cat-modal">Anuluj</button>
-                <button id="btn-confirm-cat-modal">Stwórz</button>
-            </footer>
-        </article>
-    </dialog>
+            <!-- TAB: POI -->
+            <div id="tab-poi" class="tab-content">
+                <div class="bento-card">
+                    <h3>📍 Mapa Punktów</h3>
+                    <div class="poi-header">
+                        <select id="poi-category-select"></select>
+                        <button id="btn-new-poi-category" class="icon-btn">✚</button>
+                    </div>
+                    
+                    <div id="poi-editor-container" style="display:none;">
+                        <div id="admin-map"></div>
+                        <div id="poi-points-list" class="poi-points-list"></div>
+                        <button id="btn-save-poi" class="action-btn">Zapisz POI</button>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-    <!-- Modal edycji kafelka -->
+        <!-- BOTTOM NAVIGATION -->
+        <nav class="main-nav">
+            <div class="nav-item active" data-tab="system">
+                <div class="nav-icon">⚙️</div>
+                <span>System</span>
+            </div>
+            <div class="nav-item" data-tab="tiles">
+                <div class="nav-icon">📱</div>
+                <span>Pulpit</span>
+            </div>
+            <div class="nav-item" data-tab="poi">
+                <div class="nav-icon">📍</div>
+                <span>Mapa</span>
+            </div>
+            <div class="nav-item logout-trigger">
+                <form method="POST" id="logout-form"><input type="hidden" name="action" value="logout"></form>
+                <div class="nav-icon">🚪</div>
+                <span>Wyjdź</span>
+            </div>
+        </nav>
+    </div>
+
+    <!-- MODAL EDYCJI -->
     <dialog id="tile-modal">
-        <article>
-            <header>
-                <a href="#close" aria-label="Close" class="close" id="btn-close-modal"></a>
-                <h3 id="modal-title">Edytuj Kafelek</h3>
-            </header>
+        <div class="modal-body">
+            <h3>Edytuj Element</h3>
             <form id="tile-form">
                 <input type="hidden" id="tile-index">
-                <label for="tile-id">ID Kafelka (np. pogoda)</label>
-                <input type="text" id="tile-id" required>
-
-                <div class="grid">
-                    <div>
-                        <label for="tile-type">Typ</label>
-                        <select id="tile-type" required>
-                            <option value="web">Web (Link)</option>
-                            <option value="folder">📂 Folder</option>
-                            <option value="live">Live (Pogoda)</option>
-                            <option value="map">Map (POI)</option>
-                            <option value="app_link">App Link</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="tile-size">Rozmiar</label>
-                        <select id="tile-size" required>
-                            <option value="1x1">1x1 (Mały)</option>
-                            <option value="2x2">2x2 (Średni)</option>
-                            <option value="4x2">4x2 (Duży / Baner)</option>
-                        </select>
-                    </div>
+                <input type="text" id="tile-title" placeholder="Tytuł" required>
+                <div class="grid-half">
+                    <select id="tile-type">
+                        <option value="web">Strona</option>
+                        <option value="folder">Folder</option>
+                        <option value="live">Pogoda</option>
+                        <option value="map">Mapa</option>
+                    </select>
+                    <input type="text" id="tile-icon" placeholder="Ikona">
                 </div>
-
-                <label for="tile-parent-id">ID Rodzica (zostaw puste dla Dashboardu)</label>
-                <input type="text" id="tile-parent-id" placeholder="np. folder_miejski">
-
-                <label for="tile-title">Tytuł</label>
-                <input type="text" id="tile-title" required>
-
-                <label for="tile-icon">Ikona (Material Icons)</label>
-                <input type="text" id="tile-icon" placeholder="np. newspaper">
-
-                <div id="field-url" class="dynamic-field">
-                    <label for="tile-url">URL</label>
-                    <input type="url" id="tile-url">
-                </div>
-
-                <div id="field-kind" class="dynamic-field" style="display:none;">
-                    <label for="tile-kind">Kind (dla live)</label>
-                    <input type="text" id="tile-kind" placeholder="np. weather">
-                </div>
+                <input type="text" id="tile-id" placeholder="ID (unikalne)">
+                <input type="text" id="tile-parent-id" placeholder="ID Folderu (opcja)">
+                <input type="text" id="tile-url" placeholder="Adres URL">
+                <input type="text" id="tile-data-url" placeholder="Plik POI">
                 
-                <div id="field-data-url" class="dynamic-field" style="display:none;">
-                    <label for="tile-data-url">Data URL (dla map)</label>
-                    <input type="text" id="tile-data-url" placeholder="np. dane/poi.json">
+                <div class="modal-actions">
+                    <button type="button" class="btn-text" onclick="document.getElementById('tile-modal').close()">Anuluj</button>
+                    <button type="submit" class="btn-confirm">Gotowe</button>
                 </div>
-
-                <footer>
-                    <a href="#cancel" role="button" class="secondary" id="btn-cancel-modal">Anuluj</a>
-                    <button type="submit" id="btn-save-modal">Zatwierdź</button>
-                </footer>
             </form>
-        </article>
+        </div>
     </dialog>
 
+    <div id="notification-toast"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="assets/app.js"></script>
 </body>
 </html>

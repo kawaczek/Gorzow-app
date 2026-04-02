@@ -1,229 +1,214 @@
+/* OBERON MASTER ENGINE v7.0 - NEXT GEN */
 document.addEventListener('DOMContentLoaded', () => {
-    let tilesData = [];
-    let poiData = { points: [] };
-    let currentPoiCategory = '';
-    let adminMap, adminMarker;
-    
-    // UI Elements
-    const tabLinks = document.querySelectorAll('.tab-link');
-    const adminTabs = document.querySelectorAll('.admin-tab');
-    
-    // Tab Switch Logic
-    tabLinks.forEach(link => {
-        link.addEventListener('click', (e) => {
-            e.preventDefault();
-            tabLinks.forEach(l => l.classList.remove('active'));
-            adminTabs.forEach(t => t.style.display = 'none');
+    let tilesData = [], poiData = { points: [] }, currentPoiCat = '', adminMap;
+
+    // --- TOAST SYSTEM ---
+    const showToast = (msg) => {
+        const container = document.getElementById('notification-toast');
+        const toast = document.createElement('div');
+        toast.className = 'toast-modern';
+        toast.innerText = msg;
+        container.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+    };
+
+    // --- SPA NAVIGATION ---
+    const navItems = document.querySelectorAll('.nav-item[data-tab]');
+    const tabContents = document.querySelectorAll('.tab-content');
+
+    navItems.forEach(item => {
+        item.addEventListener('click', (e) => {
+            const target = item.dataset.tab;
+            navItems.forEach(i => i.classList.remove('active'));
+            tabContents.forEach(c => c.classList.remove('active'));
             
-            link.classList.add('active');
-            document.getElementById('tab-' + link.dataset.tab).style.display = 'block';
+            item.classList.add('active');
+            document.getElementById('tab-' + target).classList.add('active');
             
-            if (link.dataset.tab === 'poi') {
-                initPoiTab();
-            }
+            if(target === 'tiles') initSortable();
+            if(target === 'poi') initPoi();
         });
     });
 
-    // --- SYSTEM LOGIC ---
-    const systemForm = document.getElementById('system-form');
-    fetchSystem();
-
-    function fetchSystem() {
-        fetch('api.php?action=get_system')
-            .then(r => r.json())
-            .then(data => {
-                document.getElementById('app_name').value = data.app_name || '';
-                document.getElementById('primary_color').value = data.primary_color || '#008C45';
-                document.getElementById('ota_version').value = data.ota_version || '1.0';
-                document.getElementById('map_style').value = data.map_style || 'voyager';
-                document.getElementById('notification').value = data.notification || '';
-                document.documentElement.style.setProperty('--primary', data.primary_color || '#008C45');
-            });
-    }
-
-    systemForm.addEventListener('submit', (e) => {
+    // --- SYSTEM CONFIG ---
+    const fetchSystem = () => {
+        fetch('api.php?action=get_system').then(r => r.json()).then(data => {
+            document.getElementById('app_name').value = data.app_name || '';
+            document.getElementById('primary_color').value = data.primary_color || '#008C45';
+            document.getElementById('map_style').value = data.map_style || 'voyager';
+            document.getElementById('notification').value = data.notification || '';
+            document.documentElement.style.setProperty('--p', data.primary_color);
+        });
+    };
+    document.getElementById('system-form').onsubmit = (e) => {
         e.preventDefault();
-        const data = {
+        const d = {
             app_name: document.getElementById('app_name').value,
             primary_color: document.getElementById('primary_color').value,
-            ota_version: parseFloat(document.getElementById('ota_version').value),
+            ota_version: 7.0,
             map_style: document.getElementById('map_style').value,
             notification: document.getElementById('notification').value
         };
-        fetch('api.php?action=save_system', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        }).then(r => r.json()).then(res => {
-            if(res.success) alert('System zaktualizowany! 🐾');
-        });
-    });
+        saveData('save_system', d, 'System gotowy! 🐾');
+    };
 
-    // --- TILES LOGIC (Dashboard) ---
+    // --- DASHBOARD (DRAG & DROP) ---
     const tilesList = document.getElementById('tiles-list');
-    fetchTiles();
+    let sortableInstance;
 
-    function fetchTiles() {
-        fetch('api.php?action=get_tiles')
-            .then(r => r.json())
-            .then(data => {
-                tilesData = data.tiles || [];
-                renderTiles();
-            });
-    }
+    const fetchTiles = () => {
+        fetch('api.php?action=get_tiles').then(r => r.json()).then(data => {
+            tilesData = data.tiles || [];
+            renderTiles();
+        });
+    };
 
-    function renderTiles() {
+    const renderTiles = () => {
         tilesList.innerHTML = '';
-        tilesData.forEach((tile, index) => {
-            const div = document.createElement('div');
-            div.className = 'tile-item';
-            div.innerHTML = `
-                <div>
-                    <strong>${tile.title}</strong>
-                    <span>Typ: ${tile.type} | Rodzic: ${tile.parent_id || 'Brak'}</span>
+        tilesData.forEach((t, i) => {
+            const el = document.createElement('div');
+            el.className = 'tile-item';
+            el.dataset.index = i;
+            el.innerHTML = `
+                <div class="tile-info">
+                    <strong>${t.title}</strong>
+                    <span>${t.type} • ${t.id}</span>
                 </div>
                 <div class="tile-actions">
-                    <button class="outline" onclick="moveTile(${index}, -1)">⬆️</button>
-                    <button class="outline" onclick="moveTile(${index}, 1)">⬇️</button>
-                    <button class="secondary" onclick="editTile(${index})">Edytuj</button>
-                    <button class="danger" onclick="deleteTile(${index})">Usuń</button>
+                    <button class="circle-btn small" onclick="editTile(${i})">✏️</button>
                 </div>
             `;
-            tilesList.appendChild(div);
+            tilesList.appendChild(el);
         });
-    }
+        initSortable();
+    };
 
-    // Modal Tile Logic (Keep existing from v4.5...)
-    // [Tutaj byłaby cała logika modalu kafelków, którą zachowujemy]
+    const initSortable = () => {
+        if(sortableInstance) sortableInstance.destroy();
+        sortableInstance = new Sortable(tilesList, {
+            animation: 150,
+            ghostClass: 'sortable-ghost',
+            onEnd: (evt) => {
+                const movedItem = tilesData.splice(evt.oldIndex, 1)[0];
+                tilesData.splice(evt.newIndex, 0, movedItem);
+            }
+        });
+    };
 
-    // --- POI LOGIC (The New Beast) ---
-    const poiCatSelect = document.getElementById('poi-category-select');
+    window.editTile = (i) => {
+        const t = tilesData[i];
+        document.getElementById('tile-index').value = i;
+        document.getElementById('tile-id').value = t.id;
+        document.getElementById('tile-type').value = t.type;
+        document.getElementById('tile-parent-id').value = t.parent_id || '';
+        document.getElementById('tile-title').value = t.title;
+        document.getElementById('tile-icon').value = t.icon || '';
+        document.getElementById('tile-url').value = t.url || '';
+        document.getElementById('tile-data-url').value = t.data_url || '';
+        document.getElementById('tile-modal').showModal();
+    };
+
+    document.getElementById('btn-add-tile').onclick = () => {
+        document.getElementById('tile-form').reset();
+        document.getElementById('tile-index').value = '-1';
+        document.getElementById('tile-modal').showModal();
+    };
+
+    document.getElementById('tile-form').onsubmit = (e) => {
+        e.preventDefault();
+        const i = parseInt(document.getElementById('tile-index').value);
+        const t = {
+            id: document.getElementById('tile-id').value,
+            type: document.getElementById('tile-type').value,
+            parent_id: document.getElementById('tile-parent-id').value,
+            title: document.getElementById('tile-title').value,
+            icon: document.getElementById('tile-icon').value,
+            url: document.getElementById('tile-url').value,
+            data_url: document.getElementById('tile-data-url').value
+        };
+        if(i === -1) tilesData.push(t); else tilesData[i] = t;
+        renderTiles();
+        document.getElementById('tile-modal').close();
+    };
+
+    document.getElementById('btn-save-tiles').onclick = () => {
+        saveData('save_tiles', {tiles: tilesData}, 'Dashboard zsynchronizowany! 🚀');
+    };
+
+    // --- POI ENGINE ---
+    const poiSelect = document.getElementById('poi-category-select');
     const poiPointsList = document.getElementById('poi-points-list');
-    const btnNewCat = document.getElementById('btn-new-poi-category');
-    
-    function initPoiTab() {
-        fetch('api.php?action=list_poi_categories')
-            .then(r => r.json())
-            .then(data => {
-                const currentVal = poiCatSelect.value;
-                poiCatSelect.innerHTML = '<option value="">-- Wybierz kategorię --</option>';
-                data.categories.forEach(cat => {
-                    const opt = document.createElement('option');
-                    opt.value = cat;
-                    opt.innerText = cat.charAt(0).toUpperCase() + cat.slice(1);
-                    poiCatSelect.appendChild(opt);
-                });
-                if (currentVal) poiCatSelect.value = currentVal;
-            });
-    }
 
-    poiCatSelect.addEventListener('change', () => {
-        currentPoiCategory = poiCatSelect.value;
-        if (!currentPoiCategory) {
-            document.getElementById('poi-editor-container').style.display = 'none';
-            return;
-        }
-        loadPoiCategory(currentPoiCategory);
-    });
+    const initPoi = () => {
+        fetch('api.php?action=list_poi_categories').then(r => r.json()).then(data => {
+            poiSelect.innerHTML = '<option value="">Wybierz kategorię...</option>';
+            data.categories.forEach(c => poiSelect.add(new Option(c, c)));
+        });
+    };
 
-    function loadPoiCategory(cat) {
-        fetch(`api.php?action=get_poi_category&category=${cat}`)
-            .then(r => r.json())
-            .then(data => {
-                poiData = data;
-                document.getElementById('poi-editor-container').style.display = 'block';
-                document.getElementById('current-poi-title').innerText = 'Edycja: ' + cat;
-                renderPoiMap();
-                renderPoiPoints();
-            });
-    }
+    poiSelect.onchange = (e) => {
+        currentPoiCat = e.target.value;
+        if(!currentPoiCat) { document.getElementById('poi-editor-container').style.display = 'none'; return; }
+        fetch(`api.php?action=get_poi_category&category=${currentPoiCat}`).then(r => r.json()).then(data => {
+            poiData = data;
+            document.getElementById('poi-editor-container').style.display = 'block';
+            renderPoiMap();
+            renderPoiPoints();
+        });
+    };
 
-    function renderPoiMap() {
-        if (!adminMap) {
+    const renderPoiMap = () => {
+        if(!adminMap) {
             adminMap = L.map('admin-map').setView([52.73, 15.23], 13);
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/voyager/{z}/{x}/{y}{r}.png', {
-                attribution: '&copy; OpenStreetMap contributors'
-            }).addTo(adminMap);
-            
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/voyager/{z}/{x}/{y}{r}.png', { attribution: '© OBERON' }).addTo(adminMap);
             adminMap.on('click', (e) => {
-                const lat = e.latlng.lat.toFixed(6);
-                const lng = e.latlng.lng.toFixed(6);
-                addNewPoiPoint(lat, lng);
+                const n = prompt('Nazwa punktu:');
+                if(n) {
+                    poiData.points.push({ name: n, lat: e.latlng.lat.toFixed(6), lng: e.latlng.lng.toFixed(6) });
+                    renderPoiPoints();
+                }
             });
         }
         setTimeout(() => adminMap.invalidateSize(), 200);
-    }
+    };
 
-    function renderPoiPoints() {
+    const renderPoiPoints = () => {
         poiPointsList.innerHTML = '';
-        if (!poiData.points) poiData.points = [];
-        
-        poiData.points.forEach((p, index) => {
+        (poiData.points || []).forEach((p, i) => {
             const div = document.createElement('div');
-            div.className = 'tile-item'; // Reusing style
-            div.style.borderLeftColor = '#ff4757';
-            div.innerHTML = `
-                <div>
-                    <strong>${p.name || 'Punkt bez nazwy'}</strong>
-                    <span>${p.lat}, ${p.lng}</span>
-                </div>
-                <div class="tile-actions">
-                    <button class="secondary" onclick="editPoiPoint(${index})">📝</button>
-                    <button class="danger" onclick="deletePoiPoint(${index})">🗑️</button>
-                </div>
-            `;
+            div.className = 'tile-item';
+            div.style.padding = '10px 20px';
+            div.innerHTML = `<div><strong>${p.name}</strong><span>${p.lat}, ${p.lng}</span></div>
+                             <button class="circle-btn small danger" onclick="deletePoi(${i})">×</button>`;
             poiPointsList.appendChild(div);
         });
-    }
-
-    window.addNewPoiPoint = (lat, lng) => {
-        const name = prompt('Nazwa nowego punktu:');
-        if (!name) return;
-        poiData.points.push({ name, lat, lng });
-        renderPoiPoints();
     };
 
-    window.deletePoiPoint = (index) => {
-        if (confirm('Usunąć ten punkt?')) {
-            poiData.points.splice(index, 1);
-            renderPoiPoints();
+    window.deletePoi = (i) => { poiData.points.splice(i, 1); renderPoiPoints(); };
+
+    document.getElementById('btn-save-poi').onclick = () => {
+        saveData(`save_poi_category&category=${currentPoiCat}`, poiData, 'Mapa POI zapisana! 📍');
+    };
+
+    document.getElementById('btn-new-poi-category').onclick = () => {
+        const n = prompt('Nazwa nowej kategorii:');
+        if(n) { 
+            currentPoiCat = n.toLowerCase().replace(/\s+/g, '_');
+            poiData = { points: [] };
+            saveData(`save_poi_category&category=${currentPoiCat}`, poiData, 'Kategoria stworzona! 🐾');
+            initPoi();
         }
     };
 
-    document.getElementById('btn-save-poi').addEventListener('click', () => {
-        fetch(`api.php?action=save_poi_category&category=${currentPoiCategory}`, {
+    const saveData = (action, data, msg) => {
+        fetch(`api.php?action=${action}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(poiData)
-        }).then(r => r.json()).then(res => {
-            if(res.success) alert('Kategoria POI zapisana! 🐾📍');
-        });
-    });
+            body: JSON.stringify(data)
+        }).then(r => r.json()).then(res => { if(res.success) alert(msg); });
+    };
 
-    btnNewCat.addEventListener('click', () => {
-        const name = prompt('Nazwa nowej kategorii (bez spacji):');
-        if (name) {
-            currentPoiCategory = name.toLowerCase();
-            poiData = { points: [] };
-            loadPoiCategory(currentPoiCategory);
-            initPoiTab();
-        }
-    });
-    
-    // --- IMPORT LOGIC ---
-    document.getElementById('btn-import-poi').addEventListener('click', () => {
-        const jsonStr = prompt('Wklej treść JSON z punktami POI:');
-        if (jsonStr) {
-            try {
-                const imported = JSON.parse(jsonStr);
-                if (Array.isArray(imported)) {
-                    poiData.points = [...poiData.points, ...imported];
-                } else if (imported.points) {
-                    poiData.points = [...poiData.points, ...imported.points];
-                }
-                renderPoiPoints();
-                alert('Zaimportowano! 🐾📥');
-            } catch (e) { alert('Błąd formatu JSON!'); }
-        }
-    });
+    // --- BOOT ---
+    fetchSystem();
+    fetchTiles();
 });
