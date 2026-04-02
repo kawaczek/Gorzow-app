@@ -2,6 +2,6 @@
   "app_name": "Gorzow",
   "primary_color": "#008C45",
   "ota_version": 4.4,
-
-  "notification": "Witaj w kafelkowym Bastionie! 🐾📱"
+  "map_style": "voyager",
+  "notification": "Witaj w Bastionie! 🐾📱"
 }

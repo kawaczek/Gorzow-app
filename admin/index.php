@@ -43,29 +43,32 @@ if (!checkAuth()) {
     <title>Panel Administratora - Bastion Gorzów</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
     <link rel="stylesheet" href="assets/style.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
-    <nav class="container-fluid" style="background-color: #222; border-bottom: 2px solid #008C45;">
+    <nav class="container-fluid" style="background-color: #ffffff; border-bottom: 1px solid #ddd;">
         <ul>
-            <li><strong style="color: #008C45;">🐾 OBERON Admin</strong></li>
+            <li><strong style="color: #008C45;">🐾 OBERON Master</strong></li>
         </ul>
         <ul>
-            <li><a href="#system" class="contrast">System</a></li>
-            <li><a href="#tiles" class="contrast">Kafelki</a></li>
+            <li><a href="#" class="tab-link active" data-tab="system">⚙️ System</a></li>
+            <li><a href="#" class="tab-link" data-tab="tiles">📱 Dashboard</a></li>
+            <li><a href="#" class="tab-link" data-tab="poi">📍 Mapa POI</a></li>
             <li>
                 <form method="POST" style="margin:0;">
                     <input type="hidden" name="action" value="logout">
-                    <button type="submit" class="outline" style="padding: 0.2rem 0.5rem; margin-left: 1rem; color: #ff5252; border-color: #ff5252;">Wyloguj</button>
+                    <button type="submit" class="outline" style="padding: 0.2rem 0.5rem; margin-left: 1rem; color: #ff4757; border-color: #ff4757; font-size: 0.8rem;">Wyjdź</button>
                 </form>
             </li>
         </ul>
     </nav>
 
     <main class="container">
-        <!-- SEKCJA: SYSTEM -->
-        <section id="system">
-            <h3>⚙️ Ustawienia Systemu</h3>
-            <div class="card" id="system-form-container">
+        <!-- ZAKŁADKA: SYSTEM -->
+        <section id="tab-system" class="admin-tab">
+            <div class="card">
+                <h3>⚙️ Konfiguracja Główna</h3>
                 <form id="system-form">
                     <div class="grid">
                         <div>
@@ -73,33 +76,94 @@ if (!checkAuth()) {
                             <input type="text" id="app_name" required>
                         </div>
                         <div>
-                            <label for="primary_color">Kolor Główny (HEX)</label>
+                            <label for="primary_color">Kolor Główny</label>
                             <input type="color" id="primary_color" required style="height: 3.5rem; padding: 0;">
                         </div>
+                    </div>
+                    <div class="grid">
                         <div>
                             <label for="ota_version">Wersja OTA</label>
                             <input type="number" step="0.1" id="ota_version" required>
                         </div>
+                        <div>
+                            <label for="map_style">Styl Mapy (Voyager!)</label>
+                            <select id="map_style">
+                                <option value="voyager">CartoDB Voyager (Zalecany)</option>
+                                <option value="light">Light (Jasna)</option>
+                                <option value="dark">Dark (Ciemna)</option>
+                                <option value="satellite">Satellite (Satelita)</option>
+                            </select>
+                        </div>
                     </div>
-                    <label for="notification">Powiadomienie</label>
+                    <label for="notification">Powiadomienie Globalne</label>
                     <input type="text" id="notification">
-                    <button type="submit">Zapisz System</button>
+                    <button type="submit">Zapisz Zmiany Systemowe</button>
                 </form>
             </div>
         </section>
 
-        <hr>
-
-        <!-- SEKCJA: KAFELKI -->
-        <section id="tiles">
-            <h3>🗂️ Zarządzanie Kafelkami</h3>
-            <button class="outline" id="btn-add-tile" style="margin-bottom: 1rem;">+ Dodaj Kafelek</button>
-            <div id="tiles-list">
-                <!-- Kafelki ładowane przez JS -->
+        <!-- ZAKŁADKA: KAFELKI -->
+        <section id="tab-tiles" class="admin-tab" style="display:none;">
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <h3>📱 Ikony i Foldery</h3>
+                    <button class="outline" id="btn-add-tile" style="width: auto;">+ Dodaj Nowy</button>
+                </div>
+                <div id="tiles-list"></div>
+                <button id="btn-save-tiles" style="margin-top: 1.5rem;">Zaktualizuj Dashboard Aplikacji</button>
             </div>
-            <button id="btn-save-tiles" style="margin-top: 1rem;">Zapisz Kafelki</button>
+        </section>
+
+        <!-- ZAKŁADKA: MAPA POI -->
+        <section id="tab-poi" class="admin-tab" style="display:none;">
+            <div class="card">
+                <h3>📍 Zarządzanie Punktami POI</h3>
+                <div class="grid">
+                    <div>
+                        <label for="poi-category-select">Wybierz Kategorię</label>
+                        <select id="poi-category-select">
+                            <option value="">-- Wybierz lub stwórz --</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; align-items: flex-end;">
+                        <button class="outline" id="btn-new-poi-category" style="margin-bottom: var(--spacing);">Nowa Kategoria</button>
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <div id="poi-editor-container" style="display:none;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h4 id="current-poi-title">Edycja: </h4>
+                        <button class="secondary" id="btn-import-poi" style="font-size: 0.8rem; width: auto;">Importuj JSON</button>
+                    </div>
+                    
+                    <div id="admin-map" style="height: 300px; border-radius: 12px; margin-bottom: 1.5rem; border: 1px solid #ddd;"></div>
+                    
+                    <div id="poi-points-list">
+                        <!-- Lista punktów w danej kategorii -->
+                    </div>
+                    
+                    <button id="btn-save-poi" style="margin-top: 1.5rem;">Zapisz Kategorię na Serwerze</button>
+                </div>
+            </div>
         </section>
     </main>
+
+    <!-- Modal Nowa Kategoria -->
+    <dialog id="new-cat-modal">
+        <article>
+            <header>
+                <a href="#close" aria-label="Close" class="close" id="btn-close-cat-modal"></a>
+                <h3>Nowa Kategoria POI</h3>
+            </header>
+            <input type="text" id="new-cat-name" placeholder="np. defibrylatory">
+            <footer>
+                <button class="secondary" id="btn-cancel-cat-modal">Anuluj</button>
+                <button id="btn-confirm-cat-modal">Stwórz</button>
+            </footer>
+        </article>
+    </dialog>
 
     <!-- Modal edycji kafelka -->
     <dialog id="tile-modal">
